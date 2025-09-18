@@ -306,9 +306,9 @@ class MainController:
         
     def run_competition_flow(self):
         current_state = "hide"
-        self.table = 4
+        # self.table = 4
         # self.coffee_color = "black"
-        self.motor_num = 2
+        self.motor_num = 1
         choose_table = 0
 
         
@@ -336,18 +336,18 @@ class MainController:
 
             elif current_state == "1.3":
                 if self.navigate_by_wall(angle=0.0, align_wall="front"):
-                    current_state = "1.5"
+                    current_state = "1.4"
                 else:
                     current_state = "ERROR_RECOVERY"
 
 #################################################################
 
-            # elif current_state == "1.4":
-            #     if self.detect_coffee_supply():
-            #         time.sleep(1)
-            #         current_state = "1.5"
-            #     else:
-            #         current_state = "ERROR_RECOVERY"
+            elif current_state == "1.4":
+                if self.detect_coffee_supply():
+                    time.sleep(1)
+                    current_state = "1.5"
+                else:
+                    current_state = "ERROR_RECOVERY"
 
             elif current_state == "1.5":
                 if self.move_slider_to_height(55):
@@ -362,19 +362,13 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "2":
-                if self.navigate_by_wall(right=0.375, angle=0.0, align_wall="front"):
+                if self.navigate_by_wall(right=0.48, angle=0.0, align_wall="front"):
                     current_state = "3"
                 else:
                     current_state = "ERROR_RECOVERY"
-
-            # elif current_state == "2":
-            #     if self.navigate_by_wall(right=0.48, angle=0.0, align_wall="front"):
-            #         current_state = "3"
-            #     else:
-            #         current_state = "ERROR_RECOVERY"
             
             elif current_state == "3":
-                if self.call_set_distance(self.motor_num, 60):
+                if self.call_set_distance(self.motor_num, 55):
                     current_state = "first_down"
                 else:
                     current_state = "ERROR_RECOVERY"        
@@ -428,7 +422,7 @@ class MainController:
 
 ##########################################################################   
 
-            elif self.table == 1 and choose_table == 1 and self.motor_num == 1:
+            elif self.table == 1 and choose_table == 1:
                 if current_state == "5":
                     if self.navigate_by_wall(angle=0.0, align_wall="front"):
                         current_state = "6"
@@ -436,7 +430,7 @@ class MainController:
                         current_state = "ERROR_RECOVERY"
 
                 elif current_state == "6":
-                    if self.navigate_by_wall(right = 1.88, front = 1.18592, angle=0.0, align_wall="right"):
+                    if self.navigate_by_wall(right = 1.88, front = 1.12592, angle=0.0, align_wall="right"):
                         current_state = "6.5"
                     else:
                         current_state = "ERROR_RECOVERY"
@@ -484,106 +478,14 @@ class MainController:
                         current_state = "ERROR_RECOVERY"
 
                 elif current_state == "put_coffee_down3":
-                    if self.move_slider_to_height(6):
-                        current_state = "10"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-                        
-                elif current_state == "10":
-                    if self.call_set_distance(self.motor_num, 30):
-                        current_state = "turn_to_ornage"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-                elif current_state == "turn_to_ornage":
-                    self.call_set_distance(self.motor_num, 10)
-                    self.move_slider_to_height(0)
-                    self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
-                    self.navigate_by_wall(angle=90)
-                    self.navigate_by_wall(angle=0.0, align_wall="right")
-                    self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
-                    choose_table = 0
-                    current_state = "0"
-
-##########################################################################      
-
-            elif self.table == 1 and choose_table == 1 and self.motor_num == 2:
-                if current_state == "5":
-                    if self.navigate_by_wall(angle=0.0, align_wall="front"):
-                        current_state = "6"
+                    if self.move_slider_to_height(5):
+                        choose_table = 0
+                        current_state = "0"
                     else:
                         current_state = "ERROR_RECOVERY"
 
-                elif current_state == "6":
-                    if self.navigate_by_wall(right = 2.17, front = 1.18592, angle=0.0, align_wall="right"):
-                        current_state = "6.5"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "6.5":
-                    if self.navigate_by_wall(angle=0.0, align_wall="right"):
-                        current_state = "7"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "7":
-                    if self.navigate_by_wall(front=1, angle=0.0, align_wall="right"):
-                        current_state = "put_coffee_down1"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "put_coffee_down1":
-                    if self.move_slider_to_height(6):
-                        current_state = "first_put_coffee"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "first_put_coffee":
-                    if self.call_set_distance(self.motor_num, 22):
-                        current_state = "put_coffee_down2"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "put_coffee_down2":
-                    if self.move_slider_to_height(35):
-                        current_state = "second_put_coffee"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "second_put_coffee":
-                    if self.call_set_distance(self.motor_num, 10):
-                        current_state = "8.8"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "8.8":
-                    if self.navigate_by_wall(front = 1.182, angle=0.0, align_wall="front"):
-                        current_state = "put_coffee_down3"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "put_coffee_down3":
-                    if self.move_slider_to_height(6):
-                        current_state = "10"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-                        
-                elif current_state == "10":
-                    if self.call_set_distance(self.motor_num, 30):
-                        current_state = "turn_to_ornage"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-                elif current_state == "turn_to_ornage":
-                    self.call_set_distance(self.motor_num, 10)
-                    self.move_slider_to_height(0)
-                    self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
-                    self.navigate_by_wall(angle=90)
-                    self.navigate_by_wall(angle=0.0, align_wall="right")
-                    self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
-                    choose_table = 0
-                    current_state = "0"
-
-##########################################################################                  
-            elif self.table == 2 and choose_table == 1 and self.motor_num == 1:
+##########################################################################                   
+            elif self.table == 2 and choose_table == 1:
                 if current_state == "5":
                     if self.navigate_by_wall(angle=0.0, align_wall="front"):
                         current_state = "6"
@@ -646,104 +548,25 @@ class MainController:
             
                 elif current_state == "10":
                     if self.call_set_distance(self.motor_num, 30):
-                        current_state = "turn_to_ornage"
+                        choose_table = 0
+                        current_state = "0"
                     else:
                         current_state = "ERROR_RECOVERY"
-                elif current_state == "turn_to_ornage":
-                    self.call_set_distance(self.motor_num, 10)
-                    self.move_slider_to_height(0)
-                    self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
-                    self.navigate_by_wall(angle=90)
-                    self.navigate_by_wall(angle=0.0, align_wall="right")
-                    self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
-                    choose_table = 0
-                    current_state = "0"
-
-##########################################################################                  
-            elif self.table == 2 and choose_table == 1 and self.motor_num == 2:
-                if current_state == "5":
-                    if self.navigate_by_wall(angle=0.0, align_wall="front"):
-                        current_state = "6"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "6":
-                    if self.navigate_by_wall(right = 2.82, front = 1.12592, angle=0.0, align_wall="right"):
-                        current_state = "6.5"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "6.5":
-                    if self.navigate_by_wall(angle=0.0, align_wall="right"):
-                        current_state = "7"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "7":
-                    if self.navigate_by_wall(front=1.02875, angle=0.0, align_wall="right"):
-                        current_state = "put_coffee_down1"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "put_coffee_down1":
-                    if self.move_slider_to_height(6):
-                        current_state = "first_put_coffee"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "first_put_coffee":
-                    if self.call_set_distance(self.motor_num, 22):
-                        current_state = "put_coffee_down2"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "put_coffee_down2":
-                    if self.move_slider_to_height(35):
-                        current_state = "second_put_coffee"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "second_put_coffee":
-                    if self.call_set_distance(self.motor_num, 10):
-                        current_state = "8.8"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "8.8":
-                    if self.navigate_by_wall(front = 1.182, angle=0.0, align_wall="front"):
-                        current_state = "put_coffee_down3"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "put_coffee_down3":
-                    if self.move_slider_to_height(6):
-                        current_state = "10"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-            
-                elif current_state == "10":
-                    if self.call_set_distance(self.motor_num, 30):
-                        current_state = "turn_to_ornage"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-                elif current_state == "turn_to_ornage":
-                    self.call_set_distance(self.motor_num, 10)
-                    self.move_slider_to_height(0)
-                    self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
-                    self.navigate_by_wall(angle=90)
-                    self.navigate_by_wall(angle=0.0, align_wall="right")
-                    self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
-                    choose_table = 0
-                    current_state = "0"
                   
 ##########################################################################  
 
-            elif self.table == 3 and choose_table == 1 and self.motor_num == 1:
+            elif self.table == 3 and choose_table == 1:
                 if current_state == "5":
                     if self.navigate_by_wall(front= 1.33, angle=0.0, align_wall="front"):
                         current_state = "5.1"
                     else:
                         current_state = "ERROR_RECOVERY"
+
+                # if current_state == "5.1":
+                #     if self.navigate_by_wall(right = 1.2, angle=0.0, align_wall="front"):
+                #         current_state = "5.2"
+                #     else:
+                #         current_state = "ERROR_RECOVERY"
 
                 elif current_state == "5.1":
                     if self.navigate_by_odometry(angle = 170):
@@ -816,121 +639,22 @@ class MainController:
                         current_state = "10"
                     else:
                         current_state = "ERROR_RECOVERY"
-                        
                 elif current_state == "10":
                     if self.call_set_distance(15):
-                        current_state = "turn_to_ornage"
+                        choose_table = 0
+                        current_state = "0"
                     else:
                         current_state = "ERROR_RECOVERY"
-
-                elif current_state == "turn_to_ornage":
-                    self.move_slider_to_height(0)
-                    self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
-                    self.navigate_by_wall(angle=-90)
-                    self.navigate_by_wall(angle=0.0, align_wall="right")
-                    self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
-                    choose_table = 0
-                    current_state = "0"
-
-##########################################################################  
-
-            elif self.table == 3 and choose_table == 1 and self.motor_num == 2:
-                if current_state == "5":
-                    if self.navigate_by_wall(front= 1.33, angle=0.0, align_wall="front"):
-                        current_state = "5.1"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "5.1":
-                    if self.navigate_by_odometry(angle = 170):
-                        current_state = "5.4"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "5.4":
-                    if self.navigate_by_wall(angle=0.0, align_wall="rear"):
-                        current_state = "5.6"
-                    else:
-                        current_state = "ERROR_RECOVERY"      
-
-                elif current_state == "5.6":
-                    if self.navigate_by_wall(rear = 1.23, angle=0.0, align_wall="left"):
-                        current_state = "6"
-                    else:
-                        current_state = "ERROR_RECOVERY"            
-
-                elif current_state == "6":
-                    if self.navigate_by_wall(left = 1.92, rear = 1.23, angle=0.0, align_wall="left"):
-                        current_state = "6.5"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "6.5":
-                    if self.navigate_by_wall(angle=0.0, align_wall="left"):
-                        current_state = "7"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "7":
-                    if self.navigate_by_wall(rear = 1.38, angle=0.0, align_wall="left"):
-                        current_state = "put_coffee_down1"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "put_coffee_down1":
-                    if self.move_slider_to_height(6):
-                        current_state = "first_put_coffee"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "first_put_coffee":
-                    if self.call_set_distance(self.motor_num, 22):
-                        current_state = "put_coffee_down2"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "put_coffee_down2":
-                    if self.move_slider_to_height(35):
-                        current_state = "second_put_coffee"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "second_put_coffee":
-                    if self.call_set_distance(self.motor_num, 10):
-                        current_state = "8.8"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "8.8":
-                    if self.navigate_by_wall(rear = 1.3, angle=0.0, align_wall="rear"):
-                        current_state = "put_coffee_down3"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "put_coffee_down3":
-                    if self.move_slider_to_height(6):
-                        current_state = "10"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-                        
-                elif current_state == "10":
-                    if self.call_set_distance(self.motor_num, 15):
-                        current_state = "turn_to_ornage"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "turn_to_ornage":
-                    self.move_slider_to_height(0)
-                    self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
-                    self.navigate_by_wall(angle=-90)
-                    self.navigate_by_wall(angle=0.0, align_wall="right")
-                    self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
-                    choose_table = 0
-                    current_state = "0"
                 
 
 ##########################################################################  
-            elif self.table == 4 and choose_table == 1 and self.motor_num == 1:
+            elif self.table == 4 and choose_table == 1:
+                # if current_state == "5":
+                #     if self.navigate_by_wall(right = 1.2, angle=0.0, align_wall="front"):
+                #         current_state = "5.1"
+                #     else:
+                #         current_state = "ERROR_RECOVERY"
+
                 if current_state == "5":
                     if self.navigate_by_wall(front= 1.33, angle=0.0, align_wall="front"):
                         current_state = "5.2"
@@ -1006,112 +730,19 @@ class MainController:
 
                 elif current_state == "put_coffee_down3":
                     if self.move_slider_to_height(5):
-                        current_state = "turn_to_ornage"
+                        choose_table = 0
+                        current_state = "0"
                     else:
                         current_state = "ERROR_RECOVERY"
-                    
-                elif current_state == "turn_to_ornage":
-                    self.move_slider_to_height(0)
-                    self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
-                    self.navigate_by_wall(angle=-90)
-                    self.navigate_by_wall(angle=0.0, align_wall="right")
-                    self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
-                    choose_table = 0
-                    current_state = "0"
-###########################################################################################
-            elif self.table == 4 and choose_table == 1 and self.motor_num == 2:
-                if current_state == "5":
-                    if self.navigate_by_wall(front= 1.33, angle=0.0, align_wall="front"):
-                        current_state = "5.2"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-                
-
-                elif current_state == "5.2":
-                    if self.navigate_by_odometry(angle = 170):
-                        current_state = "5.4"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "5.4":
-                    if self.navigate_by_wall(angle=0.0, align_wall="rear"):
-                        current_state = "5.6"
-                    else:
-                        current_state = "ERROR_RECOVERY"      
-
-                elif current_state == "5.6":
-                    if self.navigate_by_wall(rear = 1.23, angle=0.0, align_wall="left"):
-                        current_state = "6"
-                    else:
-                        current_state = "ERROR_RECOVERY"            
-
-                elif current_state == "6":
-                    if self.navigate_by_wall(left = 2.57, rear = 1.23, angle=0.0, align_wall="left"):
-                        current_state = "6.5"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "6.5":
-                    if self.navigate_by_wall(angle=0.0, align_wall="left"):
-                        current_state = "7"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "7":
-                    if self.navigate_by_wall(rear = 1.38, angle=0.0, align_wall="left"):
-                        current_state = "put_coffee_down1"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "put_coffee_down1":
-                    if self.move_slider_to_height(6):
-                        current_state = "first_put_coffee"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "first_put_coffee":
-                    if self.call_set_distance(self.motor_num, 22):
-                        current_state = "put_coffee_down2"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "put_coffee_down2":
-                    if self.move_slider_to_height(35):
-                        current_state = "second_put_coffee"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "second_put_coffee":
-                    if self.call_set_distance(self.motor_num, 10):
-                        current_state = "8.8"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "8.8":
-                    if self.navigate_by_wall(rear = 1.25, angle=0.0, align_wall="rear"):
-                        current_state = "put_coffee_down3"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-
-                elif current_state == "put_coffee_down3":
-                    if self.move_slider_to_height(5):
-                        current_state = "turn_to_ornage"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-                    
-                elif current_state == "turn_to_ornage":
-                    self.move_slider_to_height(0)
-                    self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
-                    self.navigate_by_wall(angle=-90)
-                    self.navigate_by_wall(angle=0.0, align_wall="right")
-                    self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
-                    choose_table = 0
-                    current_state = "0"
 
 ##########################################################################    
 
-
             elif current_state == "0":
+                self.move_slider_to_height(0)
+                self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
+                self.navigate_by_wall(angle=-90)
+                self.navigate_by_wall(angle=0.0, align_wall="right")
+                self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
                 rospy.loginfo("All tasks completed successfully!")
                 break
     
