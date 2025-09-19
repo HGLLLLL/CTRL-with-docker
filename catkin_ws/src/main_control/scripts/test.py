@@ -138,6 +138,19 @@ class TestMainController:
         # else:
         #     rospy.logerr(">>> Second Test Result: FAILED")
 
+        # time.sleep(2)
+        
+        # # --- Second Test Run ---
+        # # This is important to ensure that the camera was properly stopped
+        # # and can be successfully restarted.
+        # rospy.loginfo("\n>>> Performing Second Detection Test...")
+        # success2 = self.detect_coffee_supply()
+        # if success2:
+        #     rospy.loginfo(">>> Third Test Result: SUCCESS")
+        # else:
+        #     rospy.logerr(">>> Third Test Result: FAILED")
+        
+
         rospy.loginfo("\n=============================================")
         rospy.loginfo("=         COFFEE DETECTION TEST ENDED         =")
         rospy.loginfo("=============================================")

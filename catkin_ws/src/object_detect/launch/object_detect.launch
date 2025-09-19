@@ -1,7 +1,7 @@
 <launch>
 
     <!-- 咖啡指令視覺辨識 -->
-    <node name="coffee_supply_srv" pkg="object_detect" type="coffee_supply_srv.py" output="screen" />
+    <!-- <node name="coffee_supply_srv" pkg="object_detect" type="coffee_supply_srv.py" output="screen" /> -->
 
     <!-- 上升機構拿咖啡視覺辨識 -->
     <!-- <node name="coffee_taker_server_node" pkg="object_detect" type="coffee_taker_srv.py" output="screen" /> -->
@@ -15,6 +15,6 @@
     <!-- <node name="orange_detection" pkg="object_detect" type="orange_detection.py" output="screen" /> -->
 
     <!-- 測試 -->
-    <!-- <node name="object_detection_node" pkg="object_detect" type="object_detection.py" output="screen" /> -->
+    <node name="object_detection_node" pkg="object_detect" type="object_detection.py" output="screen" />
     
 </launch>
