@@ -174,6 +174,11 @@ catkin_install_python(PROGRAMS
   scripts/serial_listener.py
   scripts/test.py
   scripts/A_B_C_D.py
+  scripts/A_B_D.py  
+  scripts/B_C_D.py
+  scripts/B_D.py
+  scripts/C_D.py
+  scripts/D.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
