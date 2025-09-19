@@ -173,6 +173,7 @@ catkin_install_python(PROGRAMS
   scripts/task_launcher.py
   scripts/serial_listener.py
   scripts/test.py
+  scripts/A_B_C_D.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

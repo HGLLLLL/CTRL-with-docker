@@ -75,12 +75,12 @@ class TestMainController:
             # Step 3: Process the successful response and store the results
             self.coffee_color = resp.target_name.lower()
             self.table = int(resp.table)
-            self.cup_side = resp.cup_side.lower()
+            self.coffee = resp.cup_side.lower()
             
             # Determine which motor would be used based on coffee color
-            if self.coffee_color == 'black':
+            if self.coffee == 'right':
                 self.motor_num = 1
-            elif self.coffee_color == 'white':
+            elif self.coffee == 'left':
                 self.motor_num = 2
             else:
                 rospy.logwarn(f"Unknown coffee color '{self.coffee_color}', can't determine motor number.")

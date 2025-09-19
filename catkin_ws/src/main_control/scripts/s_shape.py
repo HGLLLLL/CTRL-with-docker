@@ -252,12 +252,7 @@ class MainController:
 
         while not rospy.is_shutdown():
             rospy.loginfo(f"====== Current State: {current_state} ======")
-##########################################################################################
-            # if current_state == "CROSS_BRIDGE":
-            #     if self.follow_line_until_t_junction():
-            #         current_state = "NAV_AFTER_BRIDGE"
-            #     else:
-            #         current_state = "ERROR_RECOVERY"
+
 ##########################################################################################
             if current_state == "NAV_AFTER_BRIDGE":
                 # time.sleep(3)

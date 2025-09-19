@@ -3,10 +3,14 @@
 
 import rospy
 from wall_localization.srv import SetWallNavigation
+from std_msgs.msg import String
+from geometry_msgs.msg import Twist
+from line_follower.srv import SetLineFollower
 from object_detect.srv import DetectCoffeeSupply
 import time
 from std_msgs.msg import Float32, Bool
 from step_motor.srv import SetDistance
+from std_srvs.srv import Trigger
 
 class MainController:
 
@@ -17,32 +21,85 @@ class MainController:
         # 等待所有服務啟動
         rospy.loginfo("Waiting for services...")
 
+        # wall navigation service client
         rospy.wait_for_service('navigate_by_wall')
         self.wall_nav_client = rospy.ServiceProxy('navigate_by_wall', SetWallNavigation)
 
-        rospy.wait_for_service('CoffeeSupply')
-        self.detect_coffee_srv = rospy.ServiceProxy('CoffeeSupply', DetectCoffeeSupply)
+        # for move_by_duration
+        self.cmd_vel_pub = rospy.Publisher('dlv/cmd_vel', Twist, queue_size=10)
+        rospy.loginfo("Publisher to '/cmd_vel' created.")
         
+        # line follower client
+        rospy.wait_for_service('set_line_follower')
+        self.line_follower_client = rospy.ServiceProxy('set_line_follower', SetLineFollower)
+        self.last_intersection_type = None
+        self.intersection_sub = rospy.Subscriber('/line_detect/intersection_type', String, self.intersection_callback)
+        rospy.loginfo("Subscribed to '/line_detect/intersection_type'.")
+
+        # coffee detection service clients
+        rospy.wait_for_service('start_coffee_camera', timeout=10.0)
+        self.start_coffee_cam_client = rospy.ServiceProxy('start_coffee_camera', Trigger)
+        rospy.wait_for_service('stop_coffee_camera', timeout=10.0)
+        self.stop_coffee_cam_client = rospy.ServiceProxy('stop_coffee_camera', Trigger) 
+        rospy.wait_for_service('CoffeeSupply', timeout=10.0)
+        self.detect_coffee_client = rospy.ServiceProxy('CoffeeSupply', DetectCoffeeSupply)
+        rospy.loginfo("All coffee detection services are ready.")
+
+        # dc motor service clients
         self.dc_motor_ready = False
         self.ready_sub = rospy.Subscriber('/dc_zero_ready', Bool, self.ready_callback)
         rospy.loginfo("Subscribing to /dc_zero_ready topic for handshake.")
-
         self.height_pub = rospy.Publisher('/slider_setpoint', Float32, queue_size=10, latch=True)
         rospy.loginfo("Created Publisher to /slider_setpoint for DC motor control.")
 
         # 訂閱者：用於接收來自 Arduino 的 /slider_current_height 回報
         self.current_height = None # 用於儲存最新的高度回報值
-        self.motor_num = None
+
+        # for coffee
+        self.coffee_color = None
+        self.table = 0
         self.cup_side = None
+        self.motor_num = None
+
         self.height_sub = rospy.Subscriber('/slider_current_height', Float32, self.height_callback)
         rospy.loginfo("Created Subscriber to /slider_current_height for feedback.")
     
-
         rospy.loginfo("All services are ready.")
 
-        self.run_competition_flow()
-        
+        self.A_B_C_D_flow()
 
+
+    def intersection_callback(self, msg):
+        self.last_intersection_type = msg.data
+
+    def toggle_line_follower(self, enable):
+        """Start or stop the line follower service."""
+        try:
+            response = self.line_follower_client(enable)
+            rospy.loginfo(f"Line follower toggled to {enable}: {response.message}")
+            return response.success
+        except rospy.ServiceException as e:
+            rospy.logerr(f"Service call to 'set_line_follower' failed: {e}")
+            return False
+
+    def follow_line_until_t_junction(self, timeout_sec=25.0):
+        """Line following task until a T-junction is detected."""
+        rospy.loginfo("Executing task: Follow line until T-junction...")
+        self.last_intersection_type = ""
+        if not self.toggle_line_follower(True):
+            return False
+        start_time = rospy.Time.now()
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            if self.last_intersection_type == "T_JUNCTION" or self.last_intersection_type == "LEFT_FORK" or self.last_intersection_type == "RIGHT_FORK":
+                rospy.loginfo("Intersection detected! Stopping.")
+                return self.toggle_line_follower(False)
+            if (rospy.Time.now() - start_time).to_sec() > timeout_sec:
+                rospy.logerr(f"Timeout ({timeout_sec}s) reached. Stopping.")
+                return self.toggle_line_follower(False)
+            rate.sleep()
+        return self.toggle_line_follower(False)
+        
     def navigate_by_wall(self, front=-1.0, rear=-1.0, left=-1.0, right=-1.0, angle=-1.0, align_wall=""):
         """Control the robot to navigate by wall."""
         rospy.loginfo(f"Executing task: Wall navigation with params: front={front}, right={right}, angle={angle}...")
@@ -58,9 +115,8 @@ class MainController:
             rospy.logerr(f"Service call to 'navigate_by_wall' failed: {e}")
             return False
 
-# 在 MainController 類別中，與您現有的 navigate_by_wall 函式並列
-
     def navigate_by_odometry(self, forward=0.0, left=0.0, angle=0.0):
+        
         """
         基於里程計的導航函式。
         所有距離單位為米(m)，角度單位為度(deg)。
@@ -89,32 +145,105 @@ class MainController:
             rospy.logerr(f"Service call for odometry navigation failed: {e}")
             return False
 
+    def move_for_duration(self, linear_x=0.0, linear_y=0.0, angular_z=0.0, duration=1.0):
+            
+        """
+        以指定速度移動特定時間。
+        :param linear_x: x 軸線速度 (m/s)
+        :param linear_y: y 軸線速度 (m/s)
+        :param angular_z: z 軸角速度 (rad/s)
+        :param duration: 移動持續時間 (秒)
+        """
+        rospy.loginfo(f"Executing move_for_duration: linear_x={linear_x}, linear_y={linear_y}, angular_z={angular_z}, duration={duration}s")
+            
+        # 建立 Twist 訊息
+        vel_msg = Twist()
+        vel_msg.linear.x = linear_x
+        vel_msg.linear.y = linear_y
+        vel_msg.angular.z = angular_z
+            
+        # 設定發布頻率
+        rate = rospy.Rate(10) # 10 Hz
+            
+        # 記錄開始時間
+        start_time = rospy.Time.now()
+            
+        # 在指定時間內持續發布速度指令
+        while (rospy.Time.now() - start_time).to_sec() < duration:
+            if rospy.is_shutdown():
+                break
+            self.cmd_vel_pub.publish(vel_msg)
+            rate.sleep()
+                
+        # 時間到後，發布停止指令
+        stop_msg = Twist()
+        self.cmd_vel_pub.publish(stop_msg)
+        rospy.loginfo("Movement duration ended. Stopping robot.")
+        return True # 表示執行成功
 
-# ==============================================================
-# ==             咖啡告示排辨識與咖啡辨識 (object detection)      ==
-# ==============================================================
-
+# 咖啡告示排辨識與咖啡辨識 (object detection)
     def detect_coffee_supply(self):
+        """
+        This function is a direct copy from the main production script.
+        It manages the camera lifecycle to detect coffee supply, ensuring
+        the test is representative of the real use case.
+        """
+        rospy.loginfo("--- Starting Coffee Supply Detection Task ---")
         try:
-            resp = self.detect_coffee_srv()  
-            if not resp.success:
-                rospy.logwarn("No coffee detected.")
+            # Step 1: Start the camera via its service
+            rospy.loginfo("Requesting to start camera...")
+            start_resp = self.start_coffee_cam_client()
+            if not start_resp.success:
+                rospy.logerr(f"Failed to start coffee camera: {start_resp.message}")
+                return False
+            
+            rospy.loginfo("Camera started successfully. Calling detection service...")
+            # Allow a brief moment for camera auto-exposure and focus to stabilize
+            rospy.sleep(0.5)
+
+            # Step 2: Call the main detection service
+            resp = self.detect_coffee_client()
+            
+            if not resp.success or resp.table == 0:
+                rospy.logwarn(f"CoffeeSupply service reported no success or no table found. Message: {resp}")
                 return False
 
-            # 取得咖啡顏色與對應 table
-            self.coffee = resp.cup_side.lower()
+            # Step 3: Process the successful response and store the results
+            self.coffee_color = resp.target_name.lower()
             self.table = int(resp.table)
-            rospy.loginfo(f"Detected coffee: '{self.coffee}', table: {self.table}")
+            self.coffee = resp.cup_side.lower()
+            
+            # Determine which motor would be used based on coffee color
+            if self.coffee == 'right':
+                self.motor_num = 1
+            elif self.coffee == 'left':
+                self.motor_num = 2
+            else:
+                rospy.logwarn(f"Unknown coffee color '{self.coffee_color}', can't determine motor number.")
+                self.motor_num = None
+
+            rospy.loginfo(f"DETECTION SUCCESS! Target: '{self.coffee_color}' coffee for table: {self.table}. Cup is on the '{self.cup_side}' side.")
             return True
 
         except rospy.ServiceException as e:
-            rospy.logerr(f"CoffeeSupply service call failed: {e}")
+            rospy.logerr(f"A service call failed during the detection process: {e}")
             return False
+        finally:
+            # Step 4: CRITICAL! Always ensure the camera is stopped,
+            # regardless of whether the detection succeeded or failed.
+            rospy.loginfo("Requesting to stop camera (in 'finally' block)...")
+            try:
+                stop_resp = self.stop_coffee_cam_client()
+                if not stop_resp.success:
+                    rospy.logwarn(f"Could not stop coffee camera cleanly: {stop_resp.message}")
+                else:
+                    rospy.loginfo("Camera stopped successfully.")
+            except rospy.ServiceException as e:
+                rospy.logerr(f"Failed to call the stop_coffee_camera service: {e}")
 
-# ==============================================================
-# ==             步進馬達控制 (step motor control)              ==
-# ==============================================================
-            
+            rospy.loginfo("--- Finished Coffee Supply Detection Task ---")
+
+# 步進馬達控制 (step motor control)            
     def call_set_distance(self, motor_id, distance):
         service_name = 'cmd_distance_srv'
         rospy.wait_for_service(service_name)
@@ -126,10 +255,7 @@ class MainController:
             rospy.logerr(f"呼叫 {service_name} 失敗: {e}")
         return False
     
-# ==============================================================
-# ==             PG36直流馬達控制 (step motor control)          ==
-# ==============================================================
-    
+# PG36直流馬達控制 (step motor control) 
     def height_callback(self, msg):
         """
         當收到 /slider_current_height 的新訊息時，此函式會被自動呼叫。
@@ -201,15 +327,11 @@ class MainController:
         
         return False
 
-# ==============================================================
-# ==             流程控制 (run competition)                    ==
-# ==============================================================
-
-    def run_competition_flow(self):
+    def coffee_flow(self):
         current_state = "Gripper extended"
         choose_table = 0
+        rate = rospy.Rate(10)
 
-        
         while not rospy.is_shutdown():
             rospy.loginfo(f"====== Current State: {current_state} ======")
 
@@ -391,10 +513,9 @@ class MainController:
                 elif current_state == "turn_to_ornage":
                     self.call_set_distance(self.motor_num, 10)
                     self.move_slider_to_height(0)
-                    self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
+                    self.call_set_distance(1, 0)
+                    self.call_set_distance(2, 0)
                     self.navigate_by_wall(angle=90)
-                    self.navigate_by_wall(angle=0.0, align_wall="right")
-                    self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
                     choose_table = 0
                     current_state = "0"
 
@@ -469,10 +590,10 @@ class MainController:
                 elif current_state == "turn_to_ornage":
                     self.call_set_distance(self.motor_num, 10)
                     self.move_slider_to_height(0)
-                    self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
+                    self.call_set_distance(1, 0)
+                    self.call_set_distance(2, 0)
                     self.navigate_by_wall(angle=90)
-                    self.navigate_by_wall(angle=0.0, align_wall="right")
-                    self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
+                    
                     choose_table = 0
                     current_state = "0"
 
@@ -548,10 +669,10 @@ class MainController:
                 elif current_state == "turn_to_ornage":
                     self.call_set_distance(self.motor_num, 10)
                     self.move_slider_to_height(0)
-                    self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
+                    self.call_set_distance(1, 0)
+                    self.call_set_distance(2, 0)
                     self.navigate_by_wall(angle=90)
-                    self.navigate_by_wall(angle=0.0, align_wall="right")
-                    self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
+                    
                     choose_table = 0
                     current_state = "0"
 
@@ -626,10 +747,10 @@ class MainController:
                 elif current_state == "turn_to_ornage":
                     self.call_set_distance(self.motor_num, 10)
                     self.move_slider_to_height(0)
-                    self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
+                    self.call_set_distance(1, 0)
+                    self.call_set_distance(2, 0)
                     self.navigate_by_wall(angle=90)
-                    self.navigate_by_wall(angle=0.0, align_wall="right")
-                    self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
+                    
                     choose_table = 0
                     current_state = "0"
                   
@@ -722,10 +843,10 @@ class MainController:
                 elif current_state == "turn_to_ornage":
                     self.call_set_distance(self.motor_num, 10)
                     self.move_slider_to_height(0)
-                    self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
+                    self.call_set_distance(1, 0)
+                    self.call_set_distance(2, 0)
                     self.navigate_by_wall(angle=-90)
-                    self.navigate_by_wall(angle=0.0, align_wall="right")
-                    self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
+                    
                     choose_table = 0
                     current_state = "0"
 
@@ -813,10 +934,10 @@ class MainController:
                 elif current_state == "turn_to_ornage":
                     self.call_set_distance(self.motor_num, 10)
                     self.move_slider_to_height(0)
-                    self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
+                    self.call_set_distance(1, 0)
+                    self.call_set_distance(2, 0)
                     self.navigate_by_wall(angle=-90)
-                    self.navigate_by_wall(angle=0.0, align_wall="right")
-                    self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
+                    
                     choose_table = 0
                     current_state = "0"
                 
@@ -905,10 +1026,10 @@ class MainController:
                 elif current_state == "turn_to_ornage":
                     self.call_set_distance(self.motor_num, 10)
                     self.move_slider_to_height(0)
-                    self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
+                    self.call_set_distance(1, 0)
+                    self.call_set_distance(2, 0)
                     self.navigate_by_wall(angle=-90)
-                    self.navigate_by_wall(angle=0.0, align_wall="right")
-                    self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
+                    
                     choose_table = 0
                     current_state = "0"
 
@@ -996,25 +1117,60 @@ class MainController:
                 elif current_state == "turn_to_ornage":
                     self.call_set_distance(self.motor_num, 10)
                     self.move_slider_to_height(0)
-                    self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
+                    self.call_set_distance(1, 0)
+                    self.call_set_distance(2, 0)
                     self.navigate_by_wall(angle=-90)
-                    self.navigate_by_wall(angle=0.0, align_wall="right")
-                    self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
+                    
                     choose_table = 0
                     current_state = "0"
 
 ##########################################################################    
 
             elif current_state == "0":
+                self.navigate_by_wall(angle=0.0, align_wall="right")
+                self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
                 rospy.loginfo("All tasks completed successfully!")
-                break
+                return True
     
             elif current_state == "ERROR_RECOVERY":
                 rospy.logerr("A task failed. Entering error recovery mode.")
-                break
+                return False
             
-            rospy.sleep(0.5)
+            rate.sleep()
 
+        return False
+
+
+    def A_B_C_D_flow(self):
+        current_state = "CROSS_BRIDGE"
+        rate = rospy.Rate(10)
+
+        while not rospy.is_shutdown():
+
+            if current_state == "CROSS_BRIDGE":
+                if self.follow_line_until_t_junction():
+                    current_state = "CROSS_BRIDGE_DONE"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            elif current_state == "CROSS_BRIDGE_DONE":
+                rospy.loginfo("Bridge crossing completed successfully!")
+                if self.coffee_flow():
+                    current_state = "COFFEE_FLOW_DONE"
+                else:
+                    current_state = "ERROR_RECOVERY"
+            
+            elif current_state == "COFFEE_FLOW_DONE":
+                rospy.loginfo("All tasks completed successfully!")
+                break
+
+            elif current_state == "ERROR_RECOVERY":
+                rospy.logerr("A task failed. Entering error recovery mode.")
+                break
+                
+            rate.sleep()
+
+        
 if __name__ == '__main__':
     try:
         MainController()
