@@ -208,7 +208,7 @@ class MainController:
         current_state = "Gripper extended"
         self.table = 4
         # self.coffee_color = "black"
-        self.motor_num = 2
+        self.motor_num = 1
         choose_table = 0
 
         
@@ -542,7 +542,8 @@ class MainController:
             
                 elif current_state == "10":
                     if self.call_set_distance(self.motor_num, 30):
-                        current_state = "turn_to_ornage"
+                        choose_table = 0
+                        current_state = "0"
                     else:
                         current_state = "ERROR_RECOVERY"
 
@@ -643,6 +644,12 @@ class MainController:
                     else:
                         current_state = "ERROR_RECOVERY"
 
+                # if current_state == "5.1":
+                #     if self.navigate_by_wall(right = 1.2, angle=0.0, align_wall="front"):
+                #         current_state = "5.2"
+                #     else:
+                #         current_state = "ERROR_RECOVERY"
+
                 elif current_state == "5.1":
                     if self.navigate_by_odometry(angle = 170):
                         current_state = "5.4"
@@ -708,7 +715,6 @@ class MainController:
                         current_state = "10"
                     else:
                         current_state = "ERROR_RECOVERY"
-                        
                 elif current_state == "10":
                     if self.call_set_distance(self.motor_num, 30):
                         current_state = "turn_to_ornage"
@@ -1001,8 +1007,12 @@ class MainController:
 
 ##########################################################################    
 
-
             elif current_state == "0":
+                self.move_slider_to_height(0)
+                self.call_set_distance(1, 0) and self.call_set_distance(2, 0)
+                self.navigate_by_wall(angle=-90)
+                self.navigate_by_wall(angle=0.0, align_wall="right")
+                self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
                 rospy.loginfo("All tasks completed successfully!")
                 break
     

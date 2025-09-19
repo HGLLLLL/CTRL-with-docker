@@ -1,0 +1,10 @@
+<launch>
+
+
+<!-- object_detect -->
+  <node pkg="object_detect" type="coffee_supply_srv.py" name="coffee_supply_server" output="screen"/>
+
+<!-- main_control -->
+  <node pkg="main_control" type="test.py" name="test" output="screen" respawn="false"/>
+
+</launch>
