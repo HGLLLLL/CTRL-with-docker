@@ -1371,23 +1371,23 @@ class MainController:
 
 
     def A_B_C_D_flow(self):
-        current_state = "CROSS_BRIDGE_DONE"
+        current_state = "CROSS_BRIDGE"
         rate = rospy.Rate(10)
 
         while not rospy.is_shutdown():
 
             if current_state == "CROSS_BRIDGE":
-                if self.follow_line_until_t_junction():
+                if self.detect_coffee_supply():
                     current_state = "CROSS_BRIDGE_DONE"
                 else:
                     current_state = "ERROR_RECOVERY"
 
-            elif current_state == "CROSS_BRIDGE_DONE":
-                rospy.loginfo("Bridge crossing completed successfully!")
-                if self.coffee_flow():
-                    current_state = "COFFEE_FLOW_DONE"
-                else:
-                    current_state = "ERROR_RECOVERY"
+            # elif current_state == "CROSS_BRIDGE_DONE":
+            #     rospy.loginfo("Bridge crossing completed successfully!")
+            #     if self.coffee_flow():
+            #         current_state = "COFFEE_FLOW_DONE"
+            #     else:
+            #         current_state = "ERROR_RECOVERY"
 
             # elif current_state == "COFFEE_FLOW_DONE":
             #     if self.s_shape_contest():
@@ -1395,7 +1395,7 @@ class MainController:
             #     else:
             #         current_state = "ERROR_RECOVERY"
             
-            elif current_state == "COFFEE_FLOW_DONE":
+            elif current_state == "CROSS_BRIDGE_DONE":
                 rospy.loginfo("All tasks completed successfully!")
                 break
 

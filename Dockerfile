@@ -194,12 +194,16 @@ RUN pip install ultralytics
 RUN apt-get install ros-noetic-rqt-tf-tree -y
 
 
+
 # Install robot state publisher
 RUN apt-get install ros-noetic-robot-state-publisher -y
 
 
 # Install ros-noetic-robot-localization
 RUN apt-get install ros-noetic-robot-localization -y
+
+# Install htop
+RUN apt-get install htop -y
 
 
 # Install pyserial
