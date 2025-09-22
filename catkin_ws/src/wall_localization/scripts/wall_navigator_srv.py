@@ -38,14 +38,14 @@ class WallNavigator:
 
         # --- Controller Parameters ---
         # Wall-based navigation parameters
-        self.dist_thresholds = [0.5, 0.2, 0.01]; self.dist_speeds = [0.4, 0.3, 0.1]
+        self.dist_thresholds = [0.5, 0.3, 0.015]; self.dist_speeds = [0.4, 0.35, 0.1]
         
         # Odom-based navigation
         self.odom_dist_thresholds = [0.3, 0.1, 0.01]; self.odom_dist_speeds = [0.25, 0.1, 0.08]
         self.odom_angle_thresholds = [30, 20, 2.5]; self.odom_angle_speeds = [0.4, 0.2, 0.1]
         
         # Angle control parameters
-        self.final_angle_thresholds = [30.0, 15.0, 1.5]; self.final_angle_speeds = [0.6, 0.5, 0.2]  
+        self.final_angle_thresholds = [30.0, 15.0, 1.5]; self.final_angle_speeds = [0.8, 0.6, 0.15]  
         self.moving_align_thresholds = [30.0, 20.0, 5.0]; self.moving_align_speeds = [0.2, 0.15, 0.1]
         
         # --- State Management ---

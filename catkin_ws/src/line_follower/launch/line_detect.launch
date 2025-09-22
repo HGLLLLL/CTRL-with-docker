@@ -4,6 +4,6 @@
   <node name="line_detect" pkg="line_follower" type="line_detect.py" output="screen"/>
 
   <!-- kalman_filter  -->
-  <node name="line_following_nav" pkg="line_follower" type="line_following_nav.py" output="screen"/>
+  <!-- <node name="line_following_nav" pkg="line_follower" type="line_following_nav.py" output="screen"/> -->
 
 </launch>

@@ -21,9 +21,9 @@ class LineDetectorHybridThreshold:
         self.cap = None
         self.timer = None
         
-        self.min_line_width = rospy.get_param('~min_line_width', 250)
-        self.max_line_width = rospy.get_param('~max_line_width', 400)
-        self.min_line_area = rospy.get_param('~min_line_area', 50000)
+        self.min_line_width = rospy.get_param('~min_line_width', 50)
+        self.max_line_width = rospy.get_param('~max_line_width', 500)
+        self.min_line_area = rospy.get_param('~min_line_area', 500)
 
         self.detection_pub = rospy.Publisher('/line_detect/detection_data', Point, queue_size=1)
         self.intersection_pub = rospy.Publisher('/line_detect/intersection_type', String, queue_size=1)

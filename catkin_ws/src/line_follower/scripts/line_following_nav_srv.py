@@ -78,15 +78,15 @@ class MecanumController:
                 return SetLineFollowerResponse(success=True, message="Already disabled.")
 
     def load_params(self):
-        self.pixel_thresh_normal = rospy.get_param('~pixel_thresh_normal', 50)
+        self.pixel_thresh_normal = rospy.get_param('~pixel_thresh_normal', 30)
         self.pixel_thresh_large = rospy.get_param('~pixel_thresh_large', 120)
         self.angle_thresh_rotate = rospy.get_param('~angle_thresh_rotate', 180)
         self.angle_thresh_ok = rospy.get_param('~angle_thresh_ok', 180)
         self.fwd_speed_normal = rospy.get_param('~fwd_speed_normal', 0.38)
         self.fwd_speed_correct = rospy.get_param('~fwd_speed_correct', 0.3)
-        self.lat_speed_correct_small = rospy.get_param('~lat_speed_correct_small', 0.035)
-        self.lat_speed_correct_large = rospy.get_param('~lat_speed_correct_large', 0.035)
-        self.rot_speed_correct = rospy.get_param('~rot_speed_correct', 0.15)
+        self.lat_speed_correct_small = rospy.get_param('~lat_speed_correct_small', 0.04)
+        self.lat_speed_correct_large = rospy.get_param('~lat_speed_correct_large', 0.04)
+        self.rot_speed_correct = rospy.get_param('~rot_speed_correct', 0)
         rospy.loginfo("Simplified parameters loaded successfully.")
 
     def control_callback(self, data):
@@ -106,10 +106,12 @@ class MecanumController:
         else:
             self.is_rotating = False
             if abs_pixel_dev <= self.pixel_thresh_normal:
+                rospy.loginfo("straight")
                 vel_msg.linear.x = self.fwd_speed_normal
                 vel_msg.linear.y = 0.0
                 vel_msg.angular.z = 0.0
             elif abs_pixel_dev <= self.pixel_thresh_large:
+                rospy.loginfo("correcting")
                 vel_msg.linear.x = self.fwd_speed_correct
                 vel_msg.linear.y = -np.sign(pixel_deviation) * self.lat_speed_correct_small
                 vel_msg.angular.z = 0.0

@@ -57,7 +57,7 @@ class RealSenseCamera:
 # Class: ObjectDetector
 # =============================================================================
 class ObjectDetector:
-    def __init__(self, model_path, conf_thresh=0.8):
+    def __init__(self, model_path, conf_thresh=0.6):
         self.model = YOLO(model_path)
         self.conf_thresh = conf_thresh
         rospy.loginfo(f"Object Detector Initialized with model: {model_path}")
@@ -148,7 +148,7 @@ class App:
 
         try:
             # Combined multi-frame detection loop
-            for _ in range(10):
+            for _ in range(20):
                 img_color = self.camera.get_color_image()
                 if img_color is None:
                     rospy.sleep(0.002)
@@ -213,7 +213,7 @@ class App:
             dist_home = dist_home / dis
             rospy.loginfo(f"Distances --- Tree to Target: {dist_tree}, Home to Target: {dist_home}")
 
-            table_lookup = {(0.684253, 0.319095): 1, (0.32448, 0.67750): 2, (0.89100, 0.66948): 3, (0.67968, 0.90544): 4}
+            table_lookup = {(0.684253, 0.319095): 1, (0.32448, 0.67750): 2, (0.89100, 0.66948): 3, (0.76968, 0.97544): 4}
             table = 0
             for (dt, dh), t in table_lookup.items():
                 if near(dist_tree, dt) and near(dist_home, dh):

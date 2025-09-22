@@ -215,9 +215,9 @@ class MainController:
             
             # Determine which motor would be used based on coffee color
             if self.coffee == 'right':
-                self.motor_num = 1
-            elif self.coffee == 'left':
                 self.motor_num = 2
+            elif self.coffee == 'left':
+                self.motor_num = 1
             else:
                 rospy.logwarn(f"Unknown coffee color '{self.coffee_color}', can't determine motor number.")
                 self.motor_num = None
@@ -551,7 +551,7 @@ class MainController:
                 rospy.logerr("A task failed. Entering error recovery mode.")
                 return False
             
-            rate.sleep()
+            time.sleep(0.5)
             
         return False
 
@@ -1357,7 +1357,7 @@ class MainController:
 
             elif current_state == "0":
                 self.navigate_by_wall(angle=0.0, align_wall="right")
-                self.navigate_by_wall(rear=4.0, angle=0.0, align_wall="right")
+                self.navigate_by_wall(rear=4.75, angle=0.0, align_wall="right")
                 rospy.loginfo("All tasks completed successfully!")
                 return True
     
@@ -1365,13 +1365,13 @@ class MainController:
                 rospy.logerr("A task failed. Entering error recovery mode.")
                 return False
             
-            rate.sleep()
+            time.sleep(0.5)
 
         return False
 
 
     def A_B_C_D_flow(self):
-        current_state = "CROSS_BRIDGE"
+        current_state = "CROSS_BRIDGE_DONE"
         rate = rospy.Rate(10)
 
         while not rospy.is_shutdown():
@@ -1389,13 +1389,13 @@ class MainController:
                 else:
                     current_state = "ERROR_RECOVERY"
 
-            elif current_state == "COFFEE_FLOW_DONE":
-                if self.s_shape_contest():
-                    current_state = "S_SHAPE_DONE"
-                else:
-                    current_state = "ERROR_RECOVERY"
+            # elif current_state == "COFFEE_FLOW_DONE":
+            #     if self.s_shape_contest():
+            #         current_state = "S_SHAPE_DONE"
+            #     else:
+            #         current_state = "ERROR_RECOVERY"
             
-            elif current_state == "S_SHAPE_DONE":
+            elif current_state == "COFFEE_FLOW_DONE":
                 rospy.loginfo("All tasks completed successfully!")
                 break
 
@@ -1403,7 +1403,7 @@ class MainController:
                 rospy.logerr("A task failed. Entering error recovery mode.")
                 break
                 
-            rate.sleep()
+            time.sleep(0.5)
 
         
 if __name__ == '__main__':
