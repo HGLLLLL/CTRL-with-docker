@@ -316,19 +316,19 @@ class MainController:
 ##########################################################################################
 
             elif current_state == "12":
-                if self.navigate_by_wall(right=4.016,angle=0.0, align_wall="front"):
+                if self.navigate_by_wall(right=4.016,angle=0.0, align_wall="right"):
                     current_state = "13"
                 else:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "13":
-                if self.navigate_by_wall(angle=0.0, align_wall="front"):
+                if self.navigate_by_wall(angle=0.0, align_wall="right"):
                     current_state = "20"
                 else:
                     current_state = "ERROR_RECOVERY"
 
-            elif current_state == "20":#test
-                if self.navigate_by_wall(front=3.955, right = 4.04, angle=0.0, align_wall="front"):
+            elif current_state == "20":
+                if self.navigate_by_wall(front=1.620, right = 4.053, angle=0.0, align_wall="right"):
                     current_state = "21"
                 else:
                     current_state = "ERROR_RECOVERY"

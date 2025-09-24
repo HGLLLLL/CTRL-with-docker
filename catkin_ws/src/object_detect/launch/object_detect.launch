@@ -15,6 +15,6 @@
     <!-- <node name="orange_detection" pkg="object_detect" type="orange_detection.py" output="screen" /> -->
 
     <!-- 測試 -->
-    <node name="object_detection_node" pkg="object_detect" type="object_detection.py" output="screen" />
+    <!-- <node name="object_detection_node" pkg="object_detect" type="object_detection.py" output="screen" /> -->
     
 </launch>

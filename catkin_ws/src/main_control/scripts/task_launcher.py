@@ -26,7 +26,7 @@ class TaskLauncher:
             6: ["main_control", "D.launch"],
             7: ["main_control", "coffee.launch"],
             8: ["main_control", "orange.launch"],
-            9: ["main_control", "s_shape.launch"],
+            9: ["main_control", "s_shape_mirror.launch"],
         }
         
         self.active_process = None

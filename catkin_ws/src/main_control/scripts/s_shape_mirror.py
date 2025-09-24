@@ -303,12 +303,13 @@ class MainController:
 
             elif current_state == "10":
                 if self.navigate_by_wall(right=3.068, angle=0.0, align_wall="rear"):
+                    self.navigate_by_wall(right=3.068, angle=0.0, align_wall="rear")
                     current_state = "11"
                 else:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "11":
-                if self.move_for_duration(linear_x=0.38, angular_z=0.86, duration=3.9):
+                if self.move_for_duration(linear_x=0.38, angular_z=0.86, duration=4.1):
                     current_state = "12"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -316,25 +317,26 @@ class MainController:
 ##########################################################################################
 
             elif current_state == "12":
-                if self.navigate_by_wall(angle=0.0, align_wall="front"):
+                if self.navigate_by_wall(angle=0.0, align_wall="left"):
                     current_state = "13"
                 else:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "13":
-                if self.navigate_by_wall(left=4.016, angle=0.0, align_wall="front"):
+                if self.navigate_by_wall(left=4.016, angle=0.0, align_wall="left"):
                     current_state = "20"
                 else:
                     current_state = "ERROR_RECOVERY"
 
-            elif current_state == "20":#test
-                if self.navigate_by_wall(front=3.955, right = 4.04, angle=0.0, align_wall="front"):
+            elif current_state == "20":
+                if self.navigate_by_wall(front=1.620, left = 4.05, angle=0.0, align_wall="left"):
+                    self.navigate_by_wall(front=1.620, left = 4.05, angle=0.0, align_wall="left")
                     current_state = "21"
                 else:
                     current_state = "ERROR_RECOVERY"
             
             elif current_state == "21":
-                if self.navigate_by_wall(left=4.06, angle=0.0, align_wall="front"):
+                if self.navigate_by_wall(left=4.06, angle=0.0, align_wall="left"):
                     current_state = "22"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -367,7 +369,7 @@ class MainController:
 
             elif current_state == "26":
                 if self.navigate_by_wall(right=5.041, angle=0.0, align_wall="rear"):
-                    current_state = "27"
+                    current_state = "29"
                 else:
                     current_state = "ERROR_RECOVERY"
 
