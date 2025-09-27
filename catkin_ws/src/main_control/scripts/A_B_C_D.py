@@ -91,7 +91,7 @@ class MainController:
         start_time = rospy.Time.now()
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
-            if self.last_intersection_type == "T_JUNCTION" or self.last_intersection_type == "LEFT_FORK" or self.last_intersection_type == "RIGHT_FORK":
+            if self.last_intersection_type == "T_JUNCTION" :
                 rospy.loginfo("Intersection detected! Stopping.")
                 return self.toggle_line_follower(False)
             if (rospy.Time.now() - start_time).to_sec() > timeout_sec:

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+
 import rospy
 import cv2
 import numpy as np
@@ -10,10 +11,12 @@ from geometry_msgs.msg import Point
 from cv_bridge import CvBridge, CvBridgeError
 from line_follower.srv import SetCameraState, SetCameraStateResponse
 
+
 class LineDetectorHybridThreshold:
     def __init__(self):
         rospy.init_node('line_detect', anonymous=True)
         rospy.loginfo("line_detect node started, waiting for command to start camera.")
+
 
         self.bridge = CvBridge()
         self.camera_id = rospy.get_param("~camera_id", "/dev/camera")
@@ -25,9 +28,11 @@ class LineDetectorHybridThreshold:
         self.max_line_width = rospy.get_param('~max_line_width', 500)
         self.min_line_area = rospy.get_param('~min_line_area', 500)
 
+
         self.detection_pub = rospy.Publisher('/line_detect/detection_data', Point, queue_size=1)
         self.intersection_pub = rospy.Publisher('/line_detect/intersection_type', String, queue_size=1)
         self.debug_image_pub = rospy.Publisher('/line_detect/image_processed', Image, queue_size=1)
+
 
         self.camera_service = rospy.Service('/line_detect/set_camera_state', SetCameraState, self.handle_set_camera_state)
         
@@ -36,6 +41,7 @@ class LineDetectorHybridThreshold:
             if self.cap and self.cap.isOpened():
                 rospy.logwarn("Camera is already running.")
                 return SetCameraStateResponse(success=True, message="Camera already running.")
+
 
             self.cap = cv2.VideoCapture(self.camera_id)
             if not self.cap.isOpened():
@@ -59,6 +65,7 @@ class LineDetectorHybridThreshold:
             
             return SetCameraStateResponse(success=True, message="Camera disabled.")
 
+
     def _preprocess_image(self, roi):
         gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
         _, global_thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
@@ -71,15 +78,18 @@ class LineDetectorHybridThreshold:
         closed_thresh = cv2.morphologyEx(combined_thresh, cv2.MORPH_CLOSE, kernel)
         return closed_thresh
 
+
     def process_frame(self, event):
         if not self.cap or not self.cap.isOpened():
             rospy.logwarn_throttle(5, "process_frame called but camera is not available.")
             return
 
+
         ret, cv_image = self.cap.read()
         if not ret:
             rospy.logwarn("cannot read frame from camera")
             return
+
 
         display_image = cv_image.copy()
         height, width, _ = display_image.shape
@@ -87,15 +97,33 @@ class LineDetectorHybridThreshold:
         roi_start_row = height * 1 // 4
         roi_end_row = height * 8 // 9
 
+
         if roi_start_row >= roi_end_row:
             rospy.logwarn_throttle(5, "ROI definition invalid. Start row is after end row. Skipping frame.")
             return
+
 
         bottom_roi = display_image[roi_start_row:roi_end_row, :]
         top_roi = display_image[:roi_start_row, :]
 
 
+        # MODIFIED: detect_line now returns None on failure
         pixel_deviation, angle_deviation, main_line_center_x = self.detect_line(bottom_roi)
+
+
+        # NEW: Handle case where no line is detected
+        if pixel_deviation is None:
+            rospy.logwarn_throttle(1, "No valid line detected. Publishing STOP signal.")
+            # Publish a special value to signal a stop
+            stop_data = Point(x=-999, y=-999, z=0)
+            self.detection_pub.publish(stop_data)
+            self.intersection_pub.publish(String(data="STOP"))
+            # Optionally, you can still show the image for debugging
+            cv2.imshow("Processed Frame", display_image)
+            cv2.waitKey(1)
+            return # Stop further processing for this frame
+
+
         intersection_type = self.detect_intersection(top_roi, main_line_center_x)
 
 
@@ -126,12 +154,15 @@ class LineDetectorHybridThreshold:
         except CvBridgeError as e:
             rospy.logerr(e)
 
+
     def detect_line(self, roi):
         thresh = self._preprocess_image(roi)
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
+        # MODIFIED: Return None if no contours found
         if not contours:
-            return 0.0, 0.0, None
+            return None, None, None
+
 
         valid_contours = []
         for cnt in contours:
@@ -145,51 +176,53 @@ class LineDetectorHybridThreshold:
                 continue
             valid_contours.append(cnt)
 
+
+        # MODIFIED: Return None if no valid contours found after filtering
         if not valid_contours:
-            return 0.0, 0.0, None
+            return None, None, None
+
 
         largest_contour = max(valid_contours, key=cv2.contourArea)
         M = cv2.moments(largest_contour)
-        pixel_deviation, angle_deviation, line_center_x = 0.0, 0.0, None
-        if M["m00"] > 0:
-            cx = int(M["m10"] / M["m00"])
-            pixel_deviation = cx - (roi.shape[1] // 2)
-            line_center_x = cx
-            rect = cv2.minAreaRect(largest_contour)
-            rect_width, rect_height = rect[1]
-            angle = rect[2]
-            if rect_width < rect_height:
-                angle_deviation = angle + 90
-            else:
-                angle_deviation = angle
-            cv2.drawContours(roi, [largest_contour], -1, (0, 255, 0), 2)
+        
+        # MODIFIED: Return None if moments are invalid (though unlikely with prior checks)
+        if M["m00"] <= 0:
+            return None, None, None
+            
+        cx = int(M["m10"] / M["m00"])
+        pixel_deviation = cx - (roi.shape[1] // 2)
+        line_center_x = cx
+        rect = cv2.minAreaRect(largest_contour)
+        rect_width, rect_height = rect[1]
+        angle = rect[2]
+        if rect_width < rect_height:
+            angle_deviation = angle + 90
+        else:
+            angle_deviation = angle
+        cv2.drawContours(roi, [largest_contour], -1, (0, 255, 0), 2)
         return pixel_deviation, angle_deviation, line_center_x
 
 
     def detect_intersection(self, roi, main_line_center_x):
+        # This function is not called if main_line_center_x is None, but we keep the check for robustness
         if main_line_center_x is None:
             return "STRAIGHT"
+            
         thresh = self._preprocess_image(roi)
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours:
             return "STRAIGHT"
+            
         largest_contour = max(contours, key=cv2.contourArea)
-        if cv2.contourArea(largest_contour) < 41000:
-             return "STRAIGHT"
-        x, y, w, h = cv2.boundingRect(largest_contour)
-        cv2.drawContours(roi, [largest_contour], -1, (255, 0, 0), 2)
-        center_line_ref = main_line_center_x
-        margin = 30
-        is_left = (x + w - 200) < (center_line_ref - margin)
-        is_right = x + 200 > (center_line_ref + margin)
-        if not is_left and not is_right:
+        
+        # MODIFIED: Simplified logic for T-junction detection
+        if cv2.contourArea(largest_contour) > 41000:
+            rospy.loginfo_throttle(1, "Large area detected, treating as T_JUNCTION.")
+            cv2.drawContours(roi, [largest_contour], -1, (0, 0, 255), 3) # Draw in red for emphasis
             return "T_JUNCTION"
-        elif is_left and not is_right:
-            return "LEFT_FORK"
-        elif not is_left and is_right:
-            return "RIGHT_FORK"
-        else:
-            return "STRAIGHT"
+        
+        # All other cases are now considered straight
+        return "STRAIGHT"
 
 
     def on_shutdown(self):

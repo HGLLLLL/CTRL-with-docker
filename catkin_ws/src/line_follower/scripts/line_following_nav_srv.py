@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+
 import rospy
 import numpy as np
 from geometry_msgs.msg import Twist, Point
 from line_follower.srv import SetLineFollower, SetLineFollowerResponse
 from line_follower.srv import SetCameraState
+
 
 class MecanumController:
     def __init__(self):
@@ -15,6 +17,7 @@ class MecanumController:
         self.cmd_vel_pub = rospy.Publisher('/dlv/cmd_vel', Twist, queue_size=1)
         self.detection_sub = None 
         self.is_active = False 
+
 
         self.load_params()
         
@@ -29,8 +32,10 @@ class MecanumController:
             rospy.signal_shutdown("Camera control service not found.")
             return
 
+
         self.service = rospy.Service('set_line_follower', SetLineFollower, self.handle_set_line_follower)
         rospy.loginfo("Service 'set_line_follower' is ready.")
+
 
     def handle_set_line_follower(self, req):
         if req.enable:
@@ -77,11 +82,12 @@ class MecanumController:
                 rospy.logwarn("Line follower is already disabled.")
                 return SetLineFollowerResponse(success=True, message="Already disabled.")
 
+
     def load_params(self):
         self.pixel_thresh_normal = rospy.get_param('~pixel_thresh_normal', 30)
         self.pixel_thresh_large = rospy.get_param('~pixel_thresh_large', 120)
-        self.angle_thresh_rotate = rospy.get_param('~angle_thresh_rotate', 180)
-        self.angle_thresh_ok = rospy.get_param('~angle_thresh_ok', 180)
+        self.angle_thresh_rotate = rospy.get_param('~angle_thresh_rotate', 181)
+        self.angle_thresh_ok = rospy.get_param('~angle_thresh_ok', 181)
         self.fwd_speed_normal = rospy.get_param('~fwd_speed_normal', 0.38)
         self.fwd_speed_correct = rospy.get_param('~fwd_speed_correct', 0.3)
         self.lat_speed_correct_small = rospy.get_param('~lat_speed_correct_small', 0.04)
@@ -89,10 +95,19 @@ class MecanumController:
         self.rot_speed_correct = rospy.get_param('~rot_speed_correct', 0)
         rospy.loginfo("Simplified parameters loaded successfully.")
 
+
     def control_callback(self, data):
         pixel_deviation = data.x
         angle_deviation = data.y
         vel_msg = Twist()
+
+        # NEW: Check for the special STOP signal
+        if pixel_deviation == -999 and angle_deviation == -999:
+            rospy.logerr("STOP signal received. Halting robot.")
+            # vel_msg is already zero, so just publish it
+            self.cmd_vel_pub.publish(vel_msg)
+            return
+
         abs_pixel_dev = abs(pixel_deviation)
         abs_angle_dev = abs(angle_deviation)
 
@@ -121,6 +136,7 @@ class MecanumController:
                 vel_msg.angular.z = 0.0
         
         self.cmd_vel_pub.publish(vel_msg)
+
 
 if __name__ == '__main__':
     try:
