@@ -84,14 +84,14 @@ class MecanumController:
 
 
     def load_params(self):
-        self.pixel_thresh_normal = rospy.get_param('~pixel_thresh_normal', 30)
-        self.pixel_thresh_large = rospy.get_param('~pixel_thresh_large', 120)
+        self.pixel_thresh_normal = rospy.get_param('~pixel_thresh_normal', 45)
+        self.pixel_thresh_large = rospy.get_param('~pixel_thresh_large', 110)
         self.angle_thresh_rotate = rospy.get_param('~angle_thresh_rotate', 181)
         self.angle_thresh_ok = rospy.get_param('~angle_thresh_ok', 181)
         self.fwd_speed_normal = rospy.get_param('~fwd_speed_normal', 0.38)
         self.fwd_speed_correct = rospy.get_param('~fwd_speed_correct', 0.3)
-        self.lat_speed_correct_small = rospy.get_param('~lat_speed_correct_small', 0.04)
-        self.lat_speed_correct_large = rospy.get_param('~lat_speed_correct_large', 0.04)
+        self.lat_speed_correct_small = rospy.get_param('~lat_speed_correct_small', 0.08)
+        self.lat_speed_correct_large = rospy.get_param('~lat_speed_correct_large', 0.1)
         self.rot_speed_correct = rospy.get_param('~rot_speed_correct', 0)
         rospy.loginfo("Simplified parameters loaded successfully.")
 

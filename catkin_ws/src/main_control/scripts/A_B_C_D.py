@@ -82,7 +82,7 @@ class MainController:
             rospy.logerr(f"Service call to 'set_line_follower' failed: {e}")
             return False
 
-    def follow_line_until_t_junction(self, timeout_sec=25.0):
+    def follow_line_until_t_junction(self, timeout_sec=30.0):
         """Line following task until a T-junction is detected."""
         rospy.loginfo("Executing task: Follow line until T-junction...")
         self.last_intersection_type = ""
@@ -1377,7 +1377,7 @@ class MainController:
         while not rospy.is_shutdown():
 
             if current_state == "CROSS_BRIDGE":
-                if self.detect_coffee_supply():
+                if self.follow_line_until_t_junction():
                     current_state = "CROSS_BRIDGE_DONE"
                 else:
                     current_state = "ERROR_RECOVERY"

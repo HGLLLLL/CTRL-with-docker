@@ -26,8 +26,8 @@ class LineDetectorHybridThreshold:
         
         self.min_line_width = rospy.get_param('~min_line_width', 50)
         self.max_line_width = rospy.get_param('~max_line_width', 500)
-        self.min_line_area = rospy.get_param('~min_line_area', 500)
-
+        self.min_line_area = rospy.get_param('~min_line_area', 15333)
+        self.binary_threshold = rospy.get_param('~binary_threshold', 50)
 
         self.detection_pub = rospy.Publisher('/line_detect/detection_data', Point, queue_size=1)
         self.intersection_pub = rospy.Publisher('/line_detect/intersection_type', String, queue_size=1)
@@ -68,15 +68,10 @@ class LineDetectorHybridThreshold:
 
     def _preprocess_image(self, roi):
         gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        _, global_thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        equalized = clahe.apply(gray)
-        adaptive_thresh = cv2.adaptiveThreshold(equalized, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-                                                cv2.THRESH_BINARY_INV, 15, 8) 
-        combined_thresh = cv2.bitwise_or(global_thresh, adaptive_thresh)
-        kernel = np.ones((5, 5), np.uint8)
-        closed_thresh = cv2.morphologyEx(combined_thresh, cv2.MORPH_CLOSE, kernel)
-        return closed_thresh
+
+        _, thresh = cv2.threshold(gray, self.binary_threshold, 255, cv2.THRESH_BINARY_INV)
+
+        return thresh
 
 
     def process_frame(self, event):
@@ -216,7 +211,7 @@ class LineDetectorHybridThreshold:
         largest_contour = max(contours, key=cv2.contourArea)
         
         # MODIFIED: Simplified logic for T-junction detection
-        if cv2.contourArea(largest_contour) > 41000:
+        if cv2.contourArea(largest_contour) > 31600:
             rospy.loginfo_throttle(1, "Large area detected, treating as T_JUNCTION.")
             cv2.drawContours(roi, [largest_contour], -1, (0, 0, 255), 3) # Draw in red for emphasis
             return "T_JUNCTION"

@@ -25,9 +25,11 @@ class LineDetectorHybridThreshold:
         rospy.loginfo("launched camera %s" % camera_id)
 
         # NEW: 取得可自定義的過濾參數 (將只被 detect_line 使用)
-        self.min_line_width = rospy.get_param('~min_line_width', 250)   # 最小線寬 (pixels)
-        self.max_line_width = rospy.get_param('~max_line_width', 400)  # 最大線寬 (pixels)
-        self.min_line_area = rospy.get_param('~min_line_area', 50000)   # 最小輪廓面積
+        self.min_line_width = rospy.get_param('~min_line_width', 50)   # 最小線寬 (pixels)
+        self.max_line_width = rospy.get_param('~max_line_width', 500)  # 最大線寬 (pixels)
+        self.min_line_area = rospy.get_param('~min_line_area', 15333)   # 最小輪廓面積
+
+        self.binary_threshold = rospy.get_param('~binary_threshold', 50)
 
         self.detection_pub = rospy.Publisher('/line_detect/detection_data', Point, queue_size=1)
         self.intersection_pub = rospy.Publisher('/line_detect/intersection_type', String, queue_size=1)
@@ -43,25 +45,9 @@ class LineDetectorHybridThreshold:
         """
         gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
 
+        _, thresh = cv2.threshold(gray, self.binary_threshold, 255, cv2.THRESH_BINARY_INV)
 
-        _, global_thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
-
-
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        equalized = clahe.apply(gray)
-        adaptive_thresh = cv2.adaptiveThreshold(equalized, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-                                                cv2.THRESH_BINARY_INV, 15, 8) 
-
-
-        combined_thresh = cv2.bitwise_or(global_thresh, adaptive_thresh)
-
-
-
-        kernel = np.ones((5, 5), np.uint8)
-        closed_thresh = cv2.morphologyEx(combined_thresh, cv2.MORPH_CLOSE, kernel)
-        
-        return closed_thresh
-
+        return thresh
 
     def process_frame(self, event):
         ret, cv_image = self.cap.read()
