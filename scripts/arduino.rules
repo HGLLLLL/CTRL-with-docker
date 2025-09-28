@@ -1,4 +1,4 @@
 # Set the udev rule , make the device_port be fixed by arduino mega board
 SUBSYSTEM=="tty" ,ATTRS{idVendor}=="2341" ,ATTRS{idProduct}=="0042" ,ATTRS{serial}=="11252601009315722566" ,SYMLINK+="arduino_mega_merge" , MODE="0666"
 SUBSYSTEM=="tty" ,ATTRS{idVendor}=="0403" ,ATTRS{idProduct}=="6001" ,ATTRS{serial}=="A50285BI", SYMLINK+="arduino_mega_step" ,MODE="0666"
-SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", KERNELS=="1-4.4.3", SYMLINK+="arduino_nano", MODE="0666"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", KERNELS=="3-2.4.3", SYMLINK+="arduino_nano", MODE="0666"

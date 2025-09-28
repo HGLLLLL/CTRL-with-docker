@@ -156,7 +156,7 @@ class App:
                     continue
                 detections_all.extend(self.detector.detect(img_color))
                 cup_detections_all.extend(self.cup_color_detector.detect(img_color))
-                rospy.sleep(0.1)
+                rospy.sleep(0.05)
             
             
             if not detections_all:
@@ -204,7 +204,6 @@ class App:
                     if lg:
                         self.positions[lm] = tuple(np.median(np.array(lg), axis=0))   
 
-            rospy.loginfo(f"All positions: {self.positions}")
             tree_pos = self.positions.get("tree")
             home_pos = self.positions.get("home")
             target_pos = self.positions.get(target_name)
@@ -244,7 +243,7 @@ class App:
                         elif rel_x > 0:
                             cup_positions[cup_name] = 'right'
                         else:
-                            cup_positions[cup_name] = 'unknown'
+                            cup_positions[cup_name] = 'unknow'
 
             
             cup_side = cup_positions.get(target_name, "")

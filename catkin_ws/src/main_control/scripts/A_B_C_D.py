@@ -222,7 +222,7 @@ class MainController:
                 rospy.logwarn(f"Unknown coffee color '{self.coffee_color}', can't determine motor number.")
                 self.motor_num = None
 
-            rospy.loginfo(f"DETECTION SUCCESS! Target: '{self.coffee_color}' coffee for table: {self.table}. Cup is on the '{self.cup_side}' side.")
+            rospy.loginfo(f"DETECTION SUCCESS! Target: '{self.coffee_color}' coffee for table: {self.table}. Cup is on the '{self.coffee}' side.")
             return True
 
         except rospy.ServiceException as e:
@@ -285,7 +285,7 @@ class MainController:
         
         return self.dc_motor_ready
 
-    def move_slider_to_height(self, target_height_cm, tolerance_cm=1.5, timeout_sec=30.0):
+    def move_slider_to_height(self, target_height_cm, tolerance_cm=0.5, timeout_sec=30.0):
         start_wait = rospy.Time.now()
         while self.current_height is None:
             if (rospy.Time.now() - start_wait).to_sec() > timeout_sec / 2:
@@ -557,14 +557,19 @@ class MainController:
 
 
     def coffee_flow(self):
-        current_state = "Gripper extended"
+        current_state = "after bridge"
         choose_table = 0
         rate = rospy.Rate(10)
 
         while not rospy.is_shutdown():
             rospy.loginfo(f"====== Current State: {current_state} ======")
+            if current_state == "after bridge":
+                if self.navigate_by_wall(front=1.65, angle=0.0, align_wall="right"):
+                    current_state = "Gripper extended"
+                else:
+                    current_state = "ERROR_RECOVERY"
 
-            if current_state == "Gripper extended":
+            elif current_state == "Gripper extended":
                 if self.call_set_distance(1, 13) and self.call_set_distance(2, 13):
                     current_state = "first_up"
                 else:
@@ -595,7 +600,7 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "detect over and up":
-                if self.move_slider_to_height(55):
+                if self.move_slider_to_height(45):
                     current_state = "navigate to get coffee"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -652,13 +657,13 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "Gripper down to robot":
-                if self.move_slider_to_height(7):
+                if self.move_slider_to_height(8):
                     current_state = "grip to hold coffee"
                 else:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "grip to hold coffee":
-                if self.call_set_distance(self.motor_num, 16):
+                if self.call_set_distance(self.motor_num, 13):
                     current_state = "back from table more"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -736,10 +741,10 @@ class MainController:
                         
                 elif current_state == "10":
                     if self.call_set_distance(self.motor_num, 30):
-                        current_state = "turn_to_ornage"
+                        current_state = "turn_to_orange"
                     else:
                         current_state = "ERROR_RECOVERY"
-                elif current_state == "turn_to_ornage":
+                elif current_state == "turn_to_orange":
                     self.call_set_distance(self.motor_num, 10)
                     self.move_slider_to_height(0)
                     self.call_set_distance(1, 0)
@@ -813,10 +818,10 @@ class MainController:
                         
                 elif current_state == "10":
                     if self.call_set_distance(self.motor_num, 30):
-                        current_state = "turn_to_ornage"
+                        current_state = "turn_to_orange"
                     else:
                         current_state = "ERROR_RECOVERY"
-                elif current_state == "turn_to_ornage":
+                elif current_state == "turn_to_orange":
                     self.call_set_distance(self.motor_num, 10)
                     self.move_slider_to_height(0)
                     self.call_set_distance(1, 0)
@@ -835,7 +840,7 @@ class MainController:
                         current_state = "ERROR_RECOVERY"
 
                 elif current_state == "navigate to customer":
-                    if self.navigate_by_wall(right = 2.53, front = 1.12592, angle=0.0, align_wall="right"):
+                    if self.navigate_by_wall(right = 2.63, front = 1.12592, angle=0.0, align_wall="right"):
                         current_state = "6.5"
                     else:
                         current_state = "ERROR_RECOVERY"
@@ -847,7 +852,7 @@ class MainController:
                         current_state = "ERROR_RECOVERY"
 
                 elif current_state == "7":
-                    if self.navigate_by_wall(front=1.02875, angle=0.0, align_wall="right"):
+                    if self.navigate_by_wall(front=1.05):
                         current_state = "put_coffee_down1"
                     else:
                         current_state = "ERROR_RECOVERY"
@@ -884,19 +889,11 @@ class MainController:
 
                 elif current_state == "put_coffee_down3":
                     if self.move_slider_to_height(6):
-                        current_state = "10"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-            
-                elif current_state == "10":
-                    if self.call_set_distance(self.motor_num, 30):
-                        choose_table = 0
-                        current_state = "0"
+                        current_state = "turn_to_orange"
                     else:
                         current_state = "ERROR_RECOVERY"
 
-                elif current_state == "turn_to_ornage":
-                    self.call_set_distance(self.motor_num, 10)
+                elif current_state == "turn_to_orange":
                     self.move_slider_to_height(0)
                     self.call_set_distance(1, 0)
                     self.call_set_distance(2, 0)
@@ -914,7 +911,7 @@ class MainController:
                         current_state = "ERROR_RECOVERY"
 
                 elif current_state == "navigate to customer":
-                    if self.navigate_by_wall(right = 2.82, front = 1.12592, angle=0.0, align_wall="right"):
+                    if self.navigate_by_wall(right = 2.92, front = 1.12592, angle=0.0, align_wall="right"):
                         current_state = "6.5"
                     else:
                         current_state = "ERROR_RECOVERY"
@@ -926,7 +923,7 @@ class MainController:
                         current_state = "ERROR_RECOVERY"
 
                 elif current_state == "7":
-                    if self.navigate_by_wall(front=1.02875, angle=0.0, align_wall="right"):
+                    if self.navigate_by_wall(front=1.05):
                         current_state = "put_coffee_down1"
                     else:
                         current_state = "ERROR_RECOVERY"
@@ -963,18 +960,11 @@ class MainController:
 
                 elif current_state == "put_coffee_down3":
                     if self.move_slider_to_height(6):
-                        current_state = "10"
-                    else:
-                        current_state = "ERROR_RECOVERY"
-            
-                elif current_state == "10":
-                    if self.call_set_distance(self.motor_num, 30):
-                        current_state = "turn_to_ornage"
+                        current_state = "turn_to_orange"
                     else:
                         current_state = "ERROR_RECOVERY"
 
-                elif current_state == "turn_to_ornage":
-                    self.call_set_distance(self.motor_num, 10)
+                elif current_state == "turn_to_orange":
                     self.move_slider_to_height(0)
                     self.call_set_distance(1, 0)
                     self.call_set_distance(2, 0)
@@ -1065,11 +1055,11 @@ class MainController:
                         current_state = "ERROR_RECOVERY"
                 elif current_state == "10":
                     if self.call_set_distance(self.motor_num, 30):
-                        current_state = "turn_to_ornage"
+                        current_state = "turn_to_orange"
                     else:
                         current_state = "ERROR_RECOVERY"
 
-                elif current_state == "turn_to_ornage":
+                elif current_state == "turn_to_orange":
                     self.call_set_distance(self.motor_num, 10)
                     self.move_slider_to_height(0)
                     self.call_set_distance(1, 0)
@@ -1156,11 +1146,11 @@ class MainController:
                         
                 elif current_state == "10":
                     if self.call_set_distance(self.motor_num, 30):
-                        current_state = "turn_to_ornage"
+                        current_state = "turn_to_orange"
                     else:
                         current_state = "ERROR_RECOVERY"
 
-                elif current_state == "turn_to_ornage":
+                elif current_state == "turn_to_orange":
                     self.call_set_distance(self.motor_num, 10)
                     self.move_slider_to_height(0)
                     self.call_set_distance(1, 0)
@@ -1248,11 +1238,11 @@ class MainController:
 
                 elif current_state == "10":
                     if self.call_set_distance(self.motor_num, 30):
-                        current_state = "turn_to_ornage"
+                        current_state = "turn_to_orange"
                     else:
                         current_state = "ERROR_RECOVERY"  
                     
-                elif current_state == "turn_to_ornage":
+                elif current_state == "turn_to_orange":
                     self.call_set_distance(self.motor_num, 10)
                     self.move_slider_to_height(0)
                     self.call_set_distance(1, 0)
@@ -1339,11 +1329,11 @@ class MainController:
 
                 elif current_state == "10":
                     if self.call_set_distance(self.motor_num, 30):
-                        current_state = "turn_to_ornage"
+                        current_state = "turn_to_orange"
                     else:
                         current_state = "ERROR_RECOVERY"  
                     
-                elif current_state == "turn_to_ornage":
+                elif current_state == "turn_to_orange":
                     self.call_set_distance(self.motor_num, 10)
                     self.move_slider_to_height(0)
                     self.call_set_distance(1, 0)
@@ -1382,12 +1372,14 @@ class MainController:
                 else:
                     current_state = "ERROR_RECOVERY"
 
-            # elif current_state == "CROSS_BRIDGE_DONE":
-            #     rospy.loginfo("Bridge crossing completed successfully!")
-            #     if self.coffee_flow():
-            #         current_state = "COFFEE_FLOW_DONE"
-            #     else:
-            #         current_state = "ERROR_RECOVERY"
+            elif current_state == "CROSS_BRIDGE_DONE":
+                rospy.loginfo("Bridge crossing completed successfully!")
+                if self.coffee_flow():
+                    current_state = "COFFEE_FLOW_DONE"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            
 
             # elif current_state == "COFFEE_FLOW_DONE":
             #     if self.s_shape_contest():
@@ -1395,7 +1387,7 @@ class MainController:
             #     else:
             #         current_state = "ERROR_RECOVERY"
             
-            elif current_state == "CROSS_BRIDGE_DONE":
+            elif current_state == "COFFEE_FLOW_DONE":
                 rospy.loginfo("All tasks completed successfully!")
                 break
 

@@ -114,8 +114,8 @@ class LineDetectorHybridThreshold:
             self.detection_pub.publish(stop_data)
             self.intersection_pub.publish(String(data="STOP"))
             # Optionally, you can still show the image for debugging
-            cv2.imshow("Processed Frame", display_image)
-            cv2.waitKey(1)
+            # cv2.imshow("Processed Frame", display_image)
+            # cv2.waitKey(1)
             return # Stop further processing for this frame
 
 
@@ -140,8 +140,8 @@ class LineDetectorHybridThreshold:
         cv2.line(display_image, (0, roi_end_row), (width, roi_end_row), (255, 0, 255), 2)
 
 
-        cv2.imshow("Processed Frame", display_image)
-        cv2.waitKey(1)
+        # cv2.imshow("Processed Frame", display_image)
+        # cv2.waitKey(1)
 
 
         try:
