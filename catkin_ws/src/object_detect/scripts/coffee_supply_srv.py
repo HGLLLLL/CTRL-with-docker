@@ -124,17 +124,17 @@ class App:
         return TriggerResponse(success=True, message="Camera stopped.")
     
     # ... (get_relative_position, get_all_relative methods are unchanged) ...
-    def get_relative_position(self, from_name, to_name):
-        from_pos = self.positions.get(from_name.lower())
-        to_pos = self.positions.get(to_name.lower())
-        if from_pos is None or to_pos is None: return None
-        return tuple(round(to_pos[i] - from_pos[i], 3) for i in range(2))
+    # def get_relative_position(self, from_name, to_name):
+    #     from_pos = self.positions.get(from_name.lower())
+    #     to_pos = self.positions.get(to_name.lower())
+    #     if from_pos is None or to_pos is None: return None
+    #     return tuple(round(to_pos[i] - from_pos[i], 3) for i in range(2))
 
-    def get_all_relative(self):
-        tree_to_target = self.get_relative_position('tree', 'black') or self.get_relative_position('tree', 'white')
-        home_to_target = self.get_relative_position('home', 'black') or self.get_relative_position('home', 'white')
-        home_to_tree = self.get_relative_position('home', 'tree')
-        return {'tree_to_target': tree_to_target, 'home_to_target': home_to_target, "home_to_tree": home_to_tree}
+    # def get_all_relative(self):
+    #     tree_to_target = self.get_relative_position('tree', 'black') or self.get_relative_position('tree', 'white')
+    #     home_to_target = self.get_relative_position('home', 'black') or self.get_relative_position('home', 'white')
+    #     home_to_tree = self.get_relative_position('home', 'tree')
+    #     return {'tree_to_target': tree_to_target, 'home_to_target': home_to_target, "home_to_tree": home_to_tree}
 
     def coffee_command(self, req):
         # MODIFIED: Check if camera is started before proceeding
@@ -145,6 +145,7 @@ class App:
         self.positions = {}
         detections_all = []
         cup_detections_all = []
+        table = 0
 
         try:
             # Combined multi-frame detection loop
@@ -155,7 +156,7 @@ class App:
                     continue
                 detections_all.extend(self.detector.detect(img_color))
                 cup_detections_all.extend(self.cup_color_detector.detect(img_color))
-                rospy.sleep(0.05)
+                rospy.sleep(0.1)
             
             
             if not detections_all:
@@ -201,25 +202,24 @@ class App:
                 if lm in object_groups and object_groups[lm]:
                     lg = max(object_groups[lm], key=len)
                     if lg:
-                        self.positions[lm] = tuple(np.median(np.array(lg), axis=0))
+                        self.positions[lm] = tuple(np.median(np.array(lg), axis=0))   
 
-            rels = self.get_all_relative()
-            dist = lambda vec: round(np.linalg.norm(vec), 1) if vec is not None else None
-            near = lambda a, b, tol=0.03: a is not None and b is not None and abs(a - b) < tol
-            dist_tree = dist(rels['tree_to_target'])
-            dist_home = dist(rels['home_to_target'])
-            dis = dist(rels['home_to_tree'])
-            dist_tree = dist_tree / dis
-            dist_home = dist_home / dis
-            rospy.loginfo(f"Distances --- Tree to Target: {dist_tree}, Home to Target: {dist_home}")
+            rospy.loginfo(f"All positions: {self.positions}")
+            tree_pos = self.positions.get("tree")
+            home_pos = self.positions.get("home")
+            target_pos = self.positions.get(target_name)
+            threshold = 100
 
-            table_lookup = {(0.684253, 0.319095): 1, (0.32448, 0.67750): 2, (0.89100, 0.66948): 3, (0.76968, 0.97544): 4}
-            table = 0
-            for (dt, dh), t in table_lookup.items():
-                if near(dist_tree, dt) and near(dist_home, dh):
-                    table = t
-                    break
-            
+            if target_pos and tree_pos and home_pos:
+                mid_x = (tree_pos[0] + home_pos[0]) / 2
+                if abs(target_pos[0] - mid_x) < threshold:
+                    # X 軸靠中間，分左右
+                    table = 1 if abs(target_pos[1] - home_pos[1]) < abs(target_pos[1] - tree_pos[1]) else 2
+                else:
+                    table = 3 if abs(target_pos[1] - home_pos[1]) < abs(target_pos[1] - tree_pos[1]) else 4
+            else:
+                rospy.logwarn("Missing position info, cannot determine table.")
+      
             cup_positions = {}
             cup_object_groups = {}
             for det in cup_detections_all:

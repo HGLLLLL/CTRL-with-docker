@@ -179,7 +179,7 @@ if __name__ == '__main__':
         rospy.init_node('object_detection_node', anonymous=True)
         rospack = rospkg.RosPack()
         package_path = rospack.get_path('object_detect')
-        model_path = os.path.join(package_path, 'scripts', 'best.pt')
+        model_path = os.path.join(package_path, 'scripts', 'coffee_merge.pt')
         app = App(model_path)
         rospy.on_shutdown(app.shutdown)
         app.run()
