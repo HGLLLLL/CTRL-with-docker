@@ -2,7 +2,7 @@ FROM ros:noetic
 
 
 # Specify terminal color
-ENV TERM xterm-256color
+ENV TERM=xterm-256color
 # Set non-interactive frontend for apt-get to avoid getting stuck on prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
