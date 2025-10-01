@@ -177,6 +177,8 @@ catkin_install_python(PROGRAMS
   scripts/A_B_C_D_1.py
   scripts/B_C_D.py
   scripts/B_C_D_1.py
+  scripts/BtoC_D.py
+  scripts/BtoC_D_1.py
   scripts/C_D.py
   scripts/C_D_1.py
   scripts/D.py
