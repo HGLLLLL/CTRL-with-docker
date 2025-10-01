@@ -19,14 +19,13 @@ class TaskLauncher:
         # --- if want to add new num to the map, just add it directly---
         self.task_map = {
             1: ["main_control", "A_B_C_D.launch"],
-            2: ["main_control", "A_B_D.launch"],
+            2: ["main_control", "A_B_C_D_1.launch"],
             3: ["main_control", "B_C_D.launch"],
-            4: ["main_control", "B_D.launch"],
+            4: ["main_control", "B_C_D_1.launch"],
             5: ["main_control", "C_D.launch"],
-            6: ["main_control", "D.launch"],
-            7: ["main_control", "coffee.launch"],
-            8: ["main_control", "orange.launch"],
-            9: ["main_control", "s_shape_mirror.launch"],
+            6: ["main_control", "C_D_1.launch"],
+            7: ["main_control", "D.launch"],
+            8: ["main_control", "D_1.launch"],
         }
         
         self.active_process = None

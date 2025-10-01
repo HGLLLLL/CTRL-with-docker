@@ -302,25 +302,29 @@ class MainController:
         
         return self.dc_motor_ready
 
-    def move_slider_to_height(self, target_height_cm, tolerance_cm=0.5, timeout_sec=30.0):
+    def move_slider_to_height(self, target_height_cm, tolerance_cm=0.7, timeout_sec=15.0):
         start_wait = rospy.Time.now()
+        rate = rospy.Rate(10)  # 以 10Hz 頻率運行
+
+        # 等待收到第一次的高度回報
         while self.current_height is None:
             if (rospy.Time.now() - start_wait).to_sec() > timeout_sec / 2:
                 rospy.logerr("Timeout waiting for first height feedback")
                 return False
-        rospy.sleep(0.1)
+            rate.sleep()  # 非阻塞式等待
         
-        """發布目標高度，並等待 Arduino 回報已到達目標位置。"""
         rospy.loginfo(f"Commanding slider to move to {target_height_cm:.2f} cm...")
         
-        # 這個檢查仍然有價值，作為雙重保險，確保回報通道也正常
+        # 雙重保險，確保回報通道也正常
         if self.current_height is None:
             rospy.logwarn("Height feedback is not available yet. Waiting for first feedback message...")
-            rospy.sleep(1.0) 
-            if self.current_height is None:
-                rospy.logerr("Still no height feedback. Aborting move.")
-                return False
-        
+            wait_start = rospy.Time.now()
+            while self.current_height is None:
+                if (rospy.Time.now() - wait_start).to_sec() > 1.0:
+                    rospy.logerr("Still no height feedback. Aborting move.")
+                    return False
+                rate.sleep()  # 非阻塞式等待
+                
         # 發布目標高度指令
         height_msg = Float32()
         height_msg.data = float(target_height_cm)
@@ -328,21 +332,24 @@ class MainController:
 
         # 進入等待迴圈，直到到達目標或逾時
         start_time = rospy.Time.now()
-        rate = rospy.Rate(10)
 
         while not rospy.is_shutdown():
-            if abs(self.current_height - target_height_cm) < tolerance_cm:
+            # 檢查是否已到達目標
+            if self.current_height is not None and abs(self.current_height - target_height_cm) < tolerance_cm:
                 rospy.loginfo(f"Slider reached target. Current height: {self.current_height:.2f} cm.")
-                rospy.sleep(0.5)
+                # 到達後等待 0.5 秒穩定，使用 rate.sleep()
+                for _ in range(5):  # 10Hz * 0.5s = 5 次循環
+                    rate.sleep()
                 return True
 
+            # 檢查是否逾時
             if (rospy.Time.now() - start_time).to_sec() > timeout_sec:
-                rospy.logerr(f"Timeout! Failed to reach {target_height_cm:.2f} cm. Last known height: {self.current_height:.2f} cm.")
-                return False
+                rospy.logwarn(f"Timeout! Did not reach {target_height_cm:.2f} cm. Last height: {self.current_height:.2f} cm. Continuing.")
+                return True
 
-            rate.sleep()
+            rate.sleep()  # 主迴圈的非阻塞式等待
         
-        return False
+        return False # 只有在 rospy 被關閉時才會執行到這裡
     
 
 
@@ -409,7 +416,7 @@ class MainController:
                         current_state = "ERROR_RECOVERY"
 
                 elif current_state == "align to get coffee right":
-                    if self.navigate_by_wall(right=0.375, angle=0.0, align_wall="front"):
+                    if self.navigate_by_wall(right=0.35, angle=0.0, align_wall="front"):
                         current_state = "Gripper reach out"
                     else:
                         current_state = "ERROR_RECOVERY"
@@ -433,7 +440,7 @@ class MainController:
                         current_state = "ERROR_RECOVERY"
 
                 elif current_state == "Gripper withdraw":
-                    if self.call_set_distance(self.motor_num, 18):
+                    if self.call_set_distance(self.motor_num, 14):
                         current_state = "Gripper up to withdraw coffee"
                     else:
                         current_state = "ERROR_RECOVERY"
@@ -451,13 +458,13 @@ class MainController:
                         current_state = "ERROR_RECOVERY"
 
                 elif current_state == "Gripper down to robot":
-                    if self.move_slider_to_height(8):
+                    if self.move_slider_to_height(7):
                         current_state = "grip to hold coffee"
                     else:
                         current_state = "ERROR_RECOVERY"
 
                 elif current_state == "grip to hold coffee":
-                    if self.call_set_distance(self.motor_num, 13):
+                    if self.call_set_distance(self.motor_num, 9):
                         current_state = "back from table more"
                     else:
                         current_state = "ERROR_RECOVERY"
@@ -470,7 +477,7 @@ class MainController:
                     else:
                         current_state = "ERROR_RECOVERY"
 
-    ##########################################################################   
+##########################################################################   
 
                 elif self.table == 1 and choose_table == 1 and self.motor_num == 1:
                     if current_state == "navigate to spin":
@@ -492,13 +499,13 @@ class MainController:
                             current_state = "ERROR_RECOVERY"
 
                     elif current_state == "7":
-                        if self.navigate_by_wall(front=1.05):
+                        if self.navigate_by_wall(front=1.03):
                             current_state = "put_coffee_down1"
                         else:
                             current_state = "ERROR_RECOVERY"
 
                     elif current_state == "put_coffee_down1":
-                        if self.move_slider_to_height(6):
+                        if self.move_slider_to_height(5.5):
                             current_state = "first_put_coffee"
                         else:
                             current_state = "ERROR_RECOVERY"
@@ -557,13 +564,13 @@ class MainController:
                             current_state = "ERROR_RECOVERY"
 
                     elif current_state == "7":
-                        if self.navigate_by_wall(front=1.05):
+                        if self.navigate_by_wall(front=1.03):
                             current_state = "put_coffee_down1"
                         else:
                             current_state = "ERROR_RECOVERY"
 
                     elif current_state == "put_coffee_down1":
-                        if self.move_slider_to_height(6):
+                        if self.move_slider_to_height(5.5):
                             current_state = "first_put_coffee"
                         else:
                             current_state = "ERROR_RECOVERY"
@@ -622,13 +629,13 @@ class MainController:
                             current_state = "ERROR_RECOVERY"
 
                     elif current_state == "7":
-                        if self.navigate_by_wall(front=1.05):
+                        if self.navigate_by_wall(front=1.03):
                             current_state = "put_coffee_down1"
                         else:
                             current_state = "ERROR_RECOVERY"
 
                     elif current_state == "put_coffee_down1":
-                        if self.move_slider_to_height(6):
+                        if self.move_slider_to_height(5.5):
                             current_state = "first_put_coffee"
                         else:
                             current_state = "ERROR_RECOVERY"
@@ -687,13 +694,13 @@ class MainController:
                             current_state = "ERROR_RECOVERY"
 
                     elif current_state == "7":
-                        if self.navigate_by_wall(front=1.05):
+                        if self.navigate_by_wall(front=1.03):
                             current_state = "put_coffee_down1"
                         else:
                             current_state = "ERROR_RECOVERY"
 
                     elif current_state == "put_coffee_down1":
-                        if self.move_slider_to_height(6):
+                        if self.move_slider_to_height(5.5):
                             current_state = "first_put_coffee"
                         else:
                             current_state = "ERROR_RECOVERY"
@@ -740,12 +747,6 @@ class MainController:
                         else:
                             current_state = "ERROR_RECOVERY"
 
-                    # if current_state == "5.1":
-                    #     if self.navigate_by_wall(right = 1.2, angle=0.0, align_wall="front"):
-                    #         current_state = "5.2"
-                    #     else:
-                    #         current_state = "ERROR_RECOVERY"
-
                     elif current_state == "5.1":
                         if self.navigate_by_odometry(angle = 170):
                             current_state = "5.4"
@@ -759,7 +760,7 @@ class MainController:
                             current_state = "ERROR_RECOVERY"                
 
                     elif current_state == "navigate to customer":
-                        if self.navigate_by_wall(left = 2.27, rear = 1.38, angle=0.0, align_wall="left"):
+                        if self.navigate_by_wall(left = 2.23, rear = 1.38, angle=0.0, align_wall="left"):
                             current_state = "6.5"
                         else:
                             current_state = "ERROR_RECOVERY"
@@ -837,7 +838,7 @@ class MainController:
                             current_state = "ERROR_RECOVERY"            
 
                     elif current_state == "navigate to customer":
-                        if self.navigate_by_wall(left = 1.98, rear = 1.38, angle=0.0, align_wall="left"):
+                        if self.navigate_by_wall(left = 1.94, rear = 1.38, angle=0.0, align_wall="left"):
                             current_state = "6.5"
                         else:
                             current_state = "ERROR_RECOVERY"
@@ -916,7 +917,7 @@ class MainController:
                             current_state = "ERROR_RECOVERY"                 
 
                     elif current_state == "navigate to customer":
-                        if self.navigate_by_wall(left = 2.92, rear = 1.38, angle=0.0, align_wall="left"):
+                        if self.navigate_by_wall(left = 2.88, rear = 1.38, angle=0.0, align_wall="left"):
                             current_state = "6.5"
                         else:
                             current_state = "ERROR_RECOVERY"
@@ -934,7 +935,7 @@ class MainController:
                             current_state = "ERROR_RECOVERY"
 
                     elif current_state == "put_coffee_down1":
-                        if self.move_slider_to_height(6):
+                        if self.move_slider_to_height(5.5):
                             current_state = "first_put_coffee"
                         else:
                             current_state = "ERROR_RECOVERY"
@@ -994,7 +995,7 @@ class MainController:
                             current_state = "ERROR_RECOVERY"                
 
                     elif current_state == "navigate to customer":
-                        if self.navigate_by_wall(left = 2.63, rear = 1.38, angle=0.0, align_wall="left"):
+                        if self.navigate_by_wall(left = 2.59, rear = 1.38, angle=0.0, align_wall="left"):
                             current_state = "6.5"
                         else:
                             current_state = "ERROR_RECOVERY"
@@ -1012,7 +1013,7 @@ class MainController:
                             current_state = "ERROR_RECOVERY"
 
                     elif current_state == "put_coffee_down1":
-                        if self.move_slider_to_height(6):
+                        if self.move_slider_to_height(5.5):
                             current_state = "first_put_coffee"
                         else:
                             current_state = "ERROR_RECOVERY"
@@ -1078,7 +1079,8 @@ class MainController:
                     current_state = "ERROR_RECOVERY" 
 
             elif current_state == "back to get basket":
-                if self.navigate_by_wall(right=3.266, angle=0, align_wall="right") and self.navigate_by_wall(rear = 1.124, angle=0, align_wall="right"):
+                if self.navigate_by_wall(right=3.266, angle=0, align_wall="right") and self.navigate_by_wall(rear = 1.3, angle=0, align_wall="right"):
+                    self.navigate_by_odometry(forward=-0.2)
                     current_state = "grip down"
                 else:
                     current_state = "ERROR_RECOVERY" 
@@ -1091,7 +1093,6 @@ class MainController:
 
             elif current_state == "go to put basket":
                 if self.navigate_by_wall(rear = 4.090, right=3.266, angle=0, align_wall="right"):
-                    self.navigate_by_odometry(forward = -0.1)
                     current_state = "turn for put basket"
                 else:
                     current_state = "ERROR_RECOVERY" 
@@ -1115,8 +1116,9 @@ class MainController:
                     current_state = "ERROR_RECOVERY" 
 
             elif current_state == "turn to s shape":
-                self.navigate_by_wall(rear = 1, angle = 0, align_wall = "left")
-                if self.navigate_by_odometry(angle = -90):
+                self.navigate_by_wall(rear = 1.8, angle = 0, align_wall = "left")
+                if self.navigate_by_odometry(angle = -80):
+                    self.navigate_by_wall(angle=0.0, align_wall="right")
                     current_state = "go to s shape"
                 else:
                     current_state = "ERROR_RECOVERY" 
@@ -1137,161 +1139,97 @@ class MainController:
 
         current_state = "NAV_AFTER_BASKET"
         rate = rospy.Rate(10)
-        # 左376 右185 後203.9 s shape右邊腳點 itron內場地
-        # 左325 右139 後490.5 s shape右邊腳點 實際場地
-        # 後加2.866 右減0.46 左減0.51
         while not rospy.is_shutdown():
             rospy.loginfo(f"====== Current State: {current_state} ======")
+
+##########################################################################################
             if current_state == "NAV_AFTER_BASKET":
-            # time.sleep(3)
-                if self.navigate_by_wall(rear=2.039+2.866, angle=0.0, align_wall="right"):
+                # time.sleep(3)
+                if self.navigate_by_wall(rear=4.54, angle=0.0, align_wall="right"):
                     current_state = "1"
                 else:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "1":
-            # time.sleep(3)
-                if self.navigate_by_wall(right=2.3-0.46, angle=0.0, align_wall="right"):
+                # time.sleep(3)
+                if self.navigate_by_wall(right=1.8, angle=0.0, align_wall="right"):
                     current_state = "2"
                 else:
                     current_state = "ERROR_RECOVERY"
-            # ##########################################################################################
 
             elif current_state == "2":
-                if self.navigate_by_wall(rear=2.382+2.866, angle=0.0, align_wall="rear"):
-                # time.sleep(0.5)
+                if self.navigate_by_wall(rear=4.82,right = 1.85, angle=0.0, align_wall="right"):
                     current_state = "3"
                 else:
                     current_state = "ERROR_RECOVERY"
-            # 第一個彎
+
             elif current_state == "3":
-                if self.move_for_duration(linear_x=0.4, angular_z=0.81, duration=2.0):
+                if self.move_for_duration(linear_x=0.38, angular_z=0.81, duration=2.1):
                     current_state = "3.1"
                 else:
                     current_state = "ERROR_RECOVERY"
-            ##########################################################################################
+                
+##########################################################################################
+
             elif current_state =="3.1":
                 if self.navigate_by_wall(angle=0.0, align_wall="rear"):
                     current_state = "4"
                 else:
                     current_state = "ERROR_RECOVERY"
-
-            # elif current_state == "4":
-            # if self.navigate_by_wall(left=2.97, angle=0.0, align_wall="front"):
-            # current_state = "5"
-            # else:
-            # current_state = "ERROR_RECOVERY"
-
-            # elif current_state == "5":
-            # if self.navigate_by_wall(rear=2.94,angle=0.0, align_wall="rear"):
-            # current_state = "6"
-            # else:
-            # current_state = "ERROR_RECOVERY"
-            
+        
             elif current_state == "4":
-                if self.navigate_by_wall(left=3.004+2.866, angle=0.0, align_wall="rear"):
+                if self.navigate_by_wall(left=5.38, angle=0.0, align_wall="rear"):
                     current_state = "7"
                 else:
                     current_state = "ERROR_RECOVERY"
 
-            # elif current_state == "7":
-            # if self.navigate_by_wall(rear=3.5, angle=0.0, align_wall="rear"):
-            # current_state = "8"
-            # else:
-            # current_state = "ERROR_RECOVERY"
-
-            # elif current_state == "8":
-            # if self.navigate_by_wall(left=3.005, angle=0.0, align_wall="rear"):
-            # current_state = "9"
-            # else:
-            # current_state = "ERROR_RECOVERY"
-
             elif current_state == "7":
-                if self.navigate_by_wall(rear=4.02-0.46,left = 3.068+2.866, angle=0.0, align_wall="rear"):
-                    current_state = "10"
-                else:
-                    current_state = "ERROR_RECOVERY"
-
-            elif current_state == "10":
-                if self.navigate_by_wall(left=3.068+2.866, angle=0.0, align_wall="rear"):
+                if self.navigate_by_wall(left = 5.38,rear=3.55, angle=0.0, align_wall="rear"):
+                    self.navigate_by_wall(left = 5.38,rear=3.55, angle=0.0, align_wall="rear")
                     current_state = "11"
                 else:
                     current_state = "ERROR_RECOVERY"
-            # 第二個彎
+
             elif current_state == "11":
                 if self.move_for_duration(linear_x=0.38, angular_z=-0.86, duration=3.9):
                     current_state = "12"
                 else:
                     current_state = "ERROR_RECOVERY"
 
+##########################################################################################
+
             elif current_state == "12":
-                if self.navigate_by_wall(right=4.018+2.866,angle=0.0, align_wall="rear"):
+                if self.navigate_by_wall(angle=0.0, align_wall="rear"):
                     current_state = "13"
                 else:
                     current_state = "ERROR_RECOVERY"
 
-
-            # 未知五公分wall
             elif current_state == "13":
-                if self.navigate_by_wall(rear=1.761-0.51, angle=0.0, align_wall="rear"):
+                if self.navigate_by_wall(right = 6.45, angle=0.0, align_wall="rear"):
                     current_state = "20"
                 else:
                     current_state = "ERROR_RECOVERY"
 
-            # elif current_state == "14":
-            # if self.navigate_by_wall(front=3.8, angle=0.0, align_wall="front"):
-            # current_state = "15"
-            # else:
-            # current_state = "ERROR_RECOVERY"
-
-            # elif current_state == "15":
-            # if self.navigate_by_wall(right=3.98, angle=0.0, align_wall="front"):
-            # current_state = "16"
-            # else:
-            # current_state = "ERROR_RECOVERY"
-
-            # # elif current_state == "16":
-            # # if self.navigate_by_wall(front=3, angle=0.0, align_wall="front"):
-            # # current_state = "17"
-            # # else:
-            # # current_state = "ERROR_RECOVERY"
-
-            # # elif current_state == "17":
-            # # if self.navigate_by_wall(right=3.99, angle=0.0, align_wall="front"):
-            # # current_state = "18"
-            # # else:
-            # # current_state = "ERROR_RECOVERY"
-
-            # # elif current_state == "18":
-            # # if self.navigate_by_wall(front=2.3, angle=0.0, align_wall="front"):
-            # # current_state = "19"
-            # # else:
-            # # current_state = "ERROR_RECOVERY"
-
-            # # elif current_state == "19":
-            # # if self.navigate_by_wall(right=4.03, angle=0.0, align_wall="front"):
-            # # current_state = "20"
-            # # else:
-            # # current_state = "ERROR_RECOVERY"
-
-            # 未知五公分wall
             elif current_state == "20":
-                if self.navigate_by_wall(rear=3.955-0.51, right = 4.04, angle=0.0, align_wall="rear"):
+                if self.navigate_by_wall(right = 6.45,front=0.92, angle=0.0, align_wall="right"):
+                    self.navigate_by_wall(right = 6.45,front=0.92, angle=0.0, align_wall="right")
                     current_state = "21"
                 else:
                     current_state = "ERROR_RECOVERY"
             
             elif current_state == "21":
-                if self.navigate_by_wall(right=4.06+2.866, angle=0.0, align_wall="rear"):
+                if self.navigate_by_wall(right=6.47, angle=0.0, align_wall="fornt"):
                     current_state = "22"
                 else:
                     current_state = "ERROR_RECOVERY"
-            # 第三個彎
+
             elif current_state == "22":
                 if self.move_for_duration(linear_x=0.38, angular_z=0.86, duration=4.1):
                     current_state = "23"
                 else:
                     current_state = "ERROR_RECOVERY"
+
+##########################################################################################
 
             elif current_state == "23":
                 if self.navigate_by_wall(angle=0.0, align_wall="rear"):
@@ -1300,55 +1238,24 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "24":
-                if self.navigate_by_wall(left=5.045+2.866, angle=0.0,align_wall="rear"):
+                if self.navigate_by_wall(right=0.535, angle=0.0,align_wall="right"):
                     current_state = "25"
                 else:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "25":
-                if self.navigate_by_wall(rear=2.292-0.46, angle=0.0, align_wall="rear"):
-                    current_state = "26"
-                else:
-                    current_state = "ERROR_RECOVERY"
-
-            elif current_state == "26":
-                if self.navigate_by_wall(left=5.041+2.866, angle=0.0, align_wall="rear"):
-                    current_state = "27"
-                else:
-                    current_state = "ERROR_RECOVERY"
-
-            elif current_state == "27":
-                if self.navigate_by_wall(left=2.17+2.866, angle=0.0, align_wall="rear"):
-                    current_state = "28"
-                else:
-                    current_state = "ERROR_RECOVERY"
-
-            elif current_state == "28":
-                if self.navigate_by_wall(angle=-90):
+                if self.navigate_by_wall(right = 0.535, rear=1.43, angle=0.0, align_wall="rear"):
                     current_state = "29"
                 else:
                     current_state = "ERROR_RECOVERY"
             
-
-            elif current_state == "27":
-                if self.navigate_by_wall(rear=3.2-0.46, angle=0.0, align_wall="rear"):
-                    current_state = "28"
-                else:
-                    current_state = "ERROR_RECOVERY"
-
-            elif current_state == "28":
-                if self.navigate_by_wall(left=5.033+2.866, angle=0.0, align_wall="rear"):
-                    current_state = "29"
-                else:
-                    current_state = "ERROR_RECOVERY"
-
             elif current_state == "29":
                 rospy.loginfo("All tasks completed successfully!")
-                return True
+                break
 
             elif current_state == "ERROR_RECOVERY":
                 rospy.logerr("A task failed. Entering error recovery mode.")
-                return False
+                break
             
             rate.sleep()
             
@@ -1363,6 +1270,7 @@ class MainController:
         while not rospy.is_shutdown():
 
             if current_state == "CROSS_BRIDGE":
+                self.move_for_duration(linear_x=0.2,duration=3.0)
                 if self.follow_line_until_t_junction():
                     current_state = "CROSS_BRIDGE_DONE"
                 else:
@@ -1382,13 +1290,13 @@ class MainController:
                 else:
                     current_state = "ERROR_RECOVERY"
 
-            # elif current_state == "BASKET_FLOW_DONE":
-            #     if self.s_shape_contest():
-            #         current_state = "S_SHAPE_DONE"
-            #     else:
-            #         current_state = "ERROR_RECOVERY"
-            
             elif current_state == "BASKET_FLOW_DONE":
+                if self.s_shape_contest():
+                    current_state = "S_SHAPE_DONE"
+                else:
+                    current_state = "ERROR_RECOVERY"
+            
+            elif current_state == "S_SHAPE_DONE":
                 rospy.loginfo("All tasks completed successfully!")
                 break
 

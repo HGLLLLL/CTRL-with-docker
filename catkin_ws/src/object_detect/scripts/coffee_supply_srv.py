@@ -149,7 +149,7 @@ class App:
 
         try:
             # Combined multi-frame detection loop
-            for _ in range(20):
+            for _ in range(10):
                 img_color = self.camera.get_color_image()
                 if img_color is None:
                     rospy.sleep(0.002)

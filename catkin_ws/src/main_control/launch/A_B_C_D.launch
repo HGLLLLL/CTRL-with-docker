@@ -48,7 +48,7 @@
 
   <node name="serial_node_mega_merge" pkg="rosserial_python" type="serial_node.py">
       <param name="port" type="string" value="/dev/arduino_mega_merge"/>
-      <param name="baud" type="int" value="57600"/>
+      <param name="baud" type="int" value="115200"/>
   </node>
   <!-- <node pkg="step_motor" type="step" name="step" output="screen"/> -->
   

@@ -95,8 +95,8 @@ class MecanumController:
         self.fwd_speed_correct = rospy.get_param('~fwd_speed_correct', 0.4)
         
         # NEW: Asymmetric lateral speed parameters
-        self.lat_right_speed_correct_small = rospy.get_param('~lat_right_speed_correct_small', 0.08)
-        self.lat_right_speed_correct_large = rospy.get_param('~lat_right_speed_correct_large', 0.1)
+        self.lat_right_speed_correct_small = rospy.get_param('~lat_right_speed_correct_small', 0.06)
+        self.lat_right_speed_correct_large = rospy.get_param('~lat_right_speed_correct_large', 0.08)
         self.lat_left_speed_correct_small = rospy.get_param('~lat_left_speed_correct_small', 0.1)
         self.lat_left_speed_correct_large = rospy.get_param('~lat_left_speed_correct_large', 0.12)
 
