@@ -33,6 +33,10 @@ class MainController:
         rospy.wait_for_service('set_line_follower')
         self.line_follower_client = rospy.ServiceProxy('set_line_follower', SetLineFollower)
         self.last_intersection_type = None
+        self.line_follower_goal_reached = False
+        self.line_follower_lost_line = False
+        self.is_line_follower_active = False
+
         self.intersection_sub = rospy.Subscriber('/line_detect/intersection_type', String, self.intersection_callback)
         rospy.loginfo("Subscribed to '/line_detect/intersection_type'.")
 
@@ -53,7 +57,7 @@ class MainController:
         rospy.loginfo("Created Publisher to /slider_setpoint for DC motor control.")
 
         # 訂閱者：用於接收來自 Arduino 的 /slider_current_height 回報
-        self.current_height = None # 用於儲存最新的高度回報值
+        self.current_height = None 
 
         # for coffee
         self.coffee_color = None
@@ -70,39 +74,101 @@ class MainController:
 
 
     def intersection_callback(self, msg):
+        """
+        事件驅動的回調函數，當循線服務啟用時，直接處理關鍵事件。
+        """
+        # 只有在循線功能啟用時，才處理這些消息，避免在其他模式下誤觸發
+        if not self.is_line_follower_active:
+            return
+
         self.last_intersection_type = msg.data
 
+        # 成功事件：偵測到T字路口
+        if self.last_intersection_type == 'T_JUNCTION':
+            rospy.loginfo(">>> Event: T_JUNCTION detected! Stopping line follower immediately.")
+            self.toggle_line_follower(False)
+            self.line_follower_goal_reached = True
+
+        
+        elif self.last_intersection_type == 'STOP':
+            rospy.logwarn(">>> Event: STOP signal detected! Line lost.")
+            self.toggle_line_follower(False)
+            self.line_follower_lost_line = True
+
+
     def toggle_line_follower(self, enable):
-        """Start or stop the line follower service."""
+        """
+        啟動或關閉循線服務，並更新內部狀態。
+        """
+        rospy.loginfo(f"Attempting to toggle line follower to: {enable}")
         try:
             response = self.line_follower_client(enable)
-            rospy.loginfo(f"Line follower toggled to {enable}: {response.message}")
+            if response.success:
+                self.is_line_follower_active = enable
+                rospy.loginfo(f"Line follower toggled successfully to: {enable}")
+            else:
+                rospy.logwarn(f"Line follower toggle to {enable} failed but service responded.")
             return response.success
         except rospy.ServiceException as e:
-            rospy.logerr(f"Service call to 'set_line_follower' failed: {e}")
+            rospy.logerr(f"Service call to set_line_follower failed: {e}")
+            self.is_line_follower_active = False
             return False
 
     def follow_line_until_t_junction(self, timeout_sec=30.0):
-        """Line following task until a T-junction is detected."""
-        rospy.loginfo("Executing task: Follow line until T-junction...")
-        self.last_intersection_type = ""
+        """
+        --- MODIFIED: Implemented the 'wait and proceed' logic for line loss ---
+        Returns 'SUCCESS', 'RECOVERED_FROM_LOSS', 'TIMEOUT', or 'ERROR'.
+        """
+        rospy.loginfo("Executing task: Follow line (with line-loss recovery)...")
+
+        # 1. 重置狀態旗標
+        self.line_follower_goal_reached = False
+        self.line_follower_lost_line = False
+        self.last_intersection_type = None
+
+        # 2. 啟動循線
         if not self.toggle_line_follower(True):
-            return False
+            rospy.logerr("Failed to start the line follower service.")
+            return 'ERROR'
+
         start_time = rospy.Time.now()
         rate = rospy.Rate(10)
+
         while not rospy.is_shutdown():
-            if self.last_intersection_type == "T_JUNCTION" :
-                rospy.loginfo("Intersection detected! Stopping.")
-                return self.toggle_line_follower(False)
-            if self.last_intersection_type == "STOP" :
-                rospy.loginfo("No line detected! Stopping.")
-                return self.toggle_line_follower(False)
+            if self.line_follower_goal_reached:
+                rospy.loginfo("Goal (T-Junction) reached successfully!")
+                return 'SUCCESS'
+           
+            if self.line_follower_lost_line:
+                rospy.logwarn("Line lost detected. Assuming end of path. Initiating recovery...")
+                # a. 確保機器人完全停止
+                self.stop_robot()
+                # b. 執行阻塞式等待5秒
+                rospy.loginfo("Waiting for 7 seconds before proceeding...")
+                rospy.sleep(7.0)
+                rospy.loginfo("7-second wait complete. Proceeding to the next flow step.")
+                # c. 返回一個新的狀態，表示是從丟失中恢復的
+                return 'RECOVERED_FROM_LOSS'
+
             if (rospy.Time.now() - start_time).to_sec() > timeout_sec:
-                rospy.logerr(f"Timeout ({timeout_sec}s) reached. Stopping.")
-                return self.toggle_line_follower(False)
+                rospy.logerr(f"Timeout ({timeout_sec}s) reached. Stopping line follower.")
+                self.toggle_line_follower(False)
+                return 'TIMEOUT'
+            
             rate.sleep()
-        return self.toggle_line_follower(False)
         
+        rospy.logwarn("ROS shutdown requested during line following.")
+        self.toggle_line_follower(False)
+        return 'ERROR'
+    
+    def stop_robot(self):
+        """確保機器人完全停止的工具函數。"""
+        rospy.loginfo("Sending zero velocity to stop the robot.")
+        stop_msg = Twist()
+        for _ in range(5):
+            self.cmd_vel_pub.publish(stop_msg)
+            rospy.sleep(0.02)
+
     def navigate_by_wall(self, front=-1.0, rear=-1.0, left=-1.0, right=-1.0, angle=-1.0, align_wall=""):
         """Control the robot to navigate by wall."""
         rospy.loginfo(f"Executing task: Wall navigation with params: front={front}, right={right}, angle={angle}...")
@@ -351,9 +417,6 @@ class MainController:
         
         return False # 只有在 rospy 被關閉時才會執行到這裡
     
-
-
-
     def coffee_flow(self):
             current_state = "after bridge"
             choose_table = 0
@@ -1269,34 +1332,38 @@ class MainController:
 
         while not rospy.is_shutdown():
 
-            if current_state == "CROSS_BRIDGE":
-                self.move_for_duration(linear_x=0.2,duration=3.0)
-                if self.follow_line_until_t_junction():
-                    current_state = "CROSS_BRIDGE_DONE"
-                else:
-                    current_state = "ERROR_RECOVERY"
+            if current_state == 'CROSS_BRIDGE':
 
-            elif current_state == "CROSS_BRIDGE_DONE":
-                rospy.loginfo("Bridge crossing completed successfully!")
-                if self.coffee_flow():
-                    current_state = "COFFEE_FLOW_DONE"
+                self.move_for_duration(linear_x=0.2, duration=3)
+                result = self.follow_line_until_t_junction()
+                
+                if result == 'SUCCESS' or result == 'RECOVERED_FROM_LOSS':
+                    current_state = 'CROSS_BRIDGE_DONE'
                 else:
-                    current_state = "ERROR_RECOVERY"
+                    rospy.logerr(f"Failed to cross bridge. Reason: {result}")
+                    current_state = 'ERROR_RECOVERY'
 
-            elif current_state == "COFFEE_FLOW_DONE":
-                rospy.loginfo("coffee delivery completed successfully!")
-                if self.take_basket():
-                    current_state = "BASKET_FLOW_DONE"
-                else:
-                    current_state = "ERROR_RECOVERY"
+            # elif current_state == "CROSS_BRIDGE_DONE":
+            #     rospy.loginfo("Bridge crossing completed successfully!")
+            #     if self.coffee_flow():
+            #         current_state = "COFFEE_FLOW_DONE"
+            #     else:
+            #         current_state = "ERROR_RECOVERY"
 
-            elif current_state == "BASKET_FLOW_DONE":
-                if self.s_shape_contest():
-                    current_state = "S_SHAPE_DONE"
-                else:
-                    current_state = "ERROR_RECOVERY"
+            # elif current_state == "COFFEE_FLOW_DONE":
+            #     rospy.loginfo("coffee delivery completed successfully!")
+            #     if self.take_basket():
+            #         current_state = "BASKET_FLOW_DONE"
+            #     else:
+            #         current_state = "ERROR_RECOVERY"
+
+            # elif current_state == "BASKET_FLOW_DONE":
+            #     if self.s_shape_contest():
+            #         current_state = "S_SHAPE_DONE"
+            #     else:
+            #         current_state = "ERROR_RECOVERY"
             
-            elif current_state == "S_SHAPE_DONE":
+            elif current_state == "CROSS_BRIDGE_DONE":
                 rospy.loginfo("All tasks completed successfully!")
                 break
 
