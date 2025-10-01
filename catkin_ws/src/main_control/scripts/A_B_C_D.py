@@ -1343,27 +1343,27 @@ class MainController:
                     rospy.logerr(f"Failed to cross bridge. Reason: {result}")
                     current_state = 'ERROR_RECOVERY'
 
-            # elif current_state == "CROSS_BRIDGE_DONE":
-            #     rospy.loginfo("Bridge crossing completed successfully!")
-            #     if self.coffee_flow():
-            #         current_state = "COFFEE_FLOW_DONE"
-            #     else:
-            #         current_state = "ERROR_RECOVERY"
-
-            # elif current_state == "COFFEE_FLOW_DONE":
-            #     rospy.loginfo("coffee delivery completed successfully!")
-            #     if self.take_basket():
-            #         current_state = "BASKET_FLOW_DONE"
-            #     else:
-            #         current_state = "ERROR_RECOVERY"
-
-            # elif current_state == "BASKET_FLOW_DONE":
-            #     if self.s_shape_contest():
-            #         current_state = "S_SHAPE_DONE"
-            #     else:
-            #         current_state = "ERROR_RECOVERY"
-            
             elif current_state == "CROSS_BRIDGE_DONE":
+                rospy.loginfo("Bridge crossing completed successfully!")
+                if self.coffee_flow():
+                    current_state = "COFFEE_FLOW_DONE"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            elif current_state == "COFFEE_FLOW_DONE":
+                rospy.loginfo("coffee delivery completed successfully!")
+                if self.take_basket():
+                    current_state = "BASKET_FLOW_DONE"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            elif current_state == "BASKET_FLOW_DONE":
+                if self.s_shape_contest():
+                    current_state = "S_SHAPE_DONE"
+                else:
+                    current_state = "ERROR_RECOVERY"
+            
+            elif current_state == "S_SHAPE_DONE":
                 rospy.loginfo("All tasks completed successfully!")
                 break
 
