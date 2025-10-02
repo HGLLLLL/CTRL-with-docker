@@ -1146,8 +1146,8 @@ class MainController:
         while not rospy.is_shutdown():
             rospy.loginfo(f"====== Current State: {current_state} ======")
             if current_state == "After Coffee":
-                if self.navigate_by_odometry(angle = -80):
-                    self.navigate_by_wall(angle=0.0, align_wall="left")
+                if self.navigate_by_odometry(angle = 80):
+                    self.navigate_by_wall(angle=0.0, align_wall="right")
                     current_state = "back to get basket"
                 else:
                     current_state = "ERROR_RECOVERY" 
