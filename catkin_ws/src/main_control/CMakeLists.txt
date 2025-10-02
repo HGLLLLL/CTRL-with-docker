@@ -180,6 +180,8 @@ catkin_install_python(PROGRAMS
   scripts/BtoC_D_1.py
   scripts/C_D.py
   scripts/C_D_1.py
+  scripts/CtoD_1.py 
+  scripts/CtoD_1.py 
   scripts/D.py
   scripts/D_1.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

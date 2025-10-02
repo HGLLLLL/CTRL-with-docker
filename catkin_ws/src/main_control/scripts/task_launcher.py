@@ -26,8 +26,10 @@ class TaskLauncher:
             6: ["main_control", "BtoC_D_1.launch"],
             7: ["main_control", "C_D.launch"],
             8: ["main_control", "C_D_1.launch"],
-            9: ["main_control", "D.launch"],
-            10: ["main_control", "D_1.launch"],
+            9: ["main_control", "CtoD.launch"],
+            10: ["main_control", "CtoD_1.launch"],
+            11: ["main_control", "D.launch"],
+            12: ["main_control", "D_1.launch"],
         }
         
         self.active_process = None

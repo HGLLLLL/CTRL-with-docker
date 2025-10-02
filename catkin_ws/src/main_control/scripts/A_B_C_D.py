@@ -1118,7 +1118,7 @@ class MainController:
 
                 elif current_state == "0":
                     self.navigate_by_wall(angle=0.0, align_wall="right")
-                    self.navigate_by_wall(rear=4.75, angle=0.0, align_wall="right")
+                    self.navigate_by_wall(rear=4.25, angle=0.0, align_wall="right")
                     rospy.loginfo("All tasks completed successfully!")
                     return True
         
@@ -1136,13 +1136,14 @@ class MainController:
         while not rospy.is_shutdown():
             rospy.loginfo(f"====== Current State: {current_state} ======")
             if current_state == "After Coffee":
-                if self.navigate_by_odometry(angle = 170):
+                if self.navigate_by_odometry(angle = -170):
+                    self.navigate_by_wall(angle=0.0, align_wall="left")
                     current_state = "back to get basket"
                 else:
                     current_state = "ERROR_RECOVERY" 
 
             elif current_state == "back to get basket":
-                if self.navigate_by_wall(left=0.708, angle=0, align_wall="left") and self.navigate_by_wall(rear = 3.783, angle=0, align_wall="left"):
+                if self.navigate_by_wall(left=0.708, angle=0, align_wall="left") and self.navigate_by_wall(rear = 3.8, angle=0, align_wall="right"):
                     self.navigate_by_odometry(forward=-0.1)
                     current_state = "grip down"
                 else:
@@ -1155,7 +1156,7 @@ class MainController:
                     current_state = "ERROR_RECOVERY" 
 
             elif current_state == "go to put basket":
-                if self.navigate_by_wall(rear = 3.283, left=4.090, angle=0, align_wall="right"):
+                if self.navigate_by_wall(rear = 3.7, left=4.090, angle=0, align_wall="left"):
                     current_state = "turn for put basket"
                 else:
                     current_state = "ERROR_RECOVERY" 

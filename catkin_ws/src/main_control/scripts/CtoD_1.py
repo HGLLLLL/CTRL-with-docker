@@ -1201,7 +1201,7 @@ class MainController:
             
             rate.sleep()
             
-        return False                
+        return False                        
 
     def s_shape_contest(self):
 
@@ -1221,6 +1221,7 @@ class MainController:
             elif current_state == "1":
                 # time.sleep(3)
                 if self.navigate_by_wall(left=1.81, angle=0.0, align_wall="left"):
+                    self.navigate_by_wall(rear=4.45, left = 1.81, angle=0.0, align_wall="left")
                     current_state = "2"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -1339,36 +1340,11 @@ class MainController:
 
 
     def A_B_C_D_flow(self):
-        current_state = "CROSS_BRIDGE"
+        current_state = "S_SHAPE_DONE"
         rate = rospy.Rate(10)
 
         while not rospy.is_shutdown():
-
-            if current_state == 'CROSS_BRIDGE':
-                self.move_for_duration(linear_x=0.2, duration=3)
-
-                result = self.follow_line_until_t_junction()
-                if result == 'SUCCESS' or result == 'RECOVERED_FROM_LOSS':
-                    current_state = 'CROSS_BRIDGE_DONE'
-                else:
-                    rospy.logerr(f"Failed to cross bridge. Reason: {result}")
-                    current_state = 'ERROR_RECOVERY'
-
-            elif current_state == "CROSS_BRIDGE_DONE":
-                rospy.loginfo("Bridge crossing completed successfully!")
-                if self.coffee_flow():
-                    current_state = "COFFEE_FLOW_DONE"
-                else:
-                    current_state = "ERROR_RECOVERY"
-
-            elif current_state == "COFFEE_FLOW_DONE":
-                rospy.loginfo("coffee delivery completed successfully!")
-                if self.take_basket():
-                    current_state = "BASKET_FLOW_DONE"
-                else:
-                    current_state = "ERROR_RECOVERY"
-
-            elif current_state == "BASKET_FLOW_DONE":
+            if current_state == "BASKET_FLOW_DONE":
                 if self.s_shape_contest():
                     current_state = "S_SHAPE_DONE"
                 else:
