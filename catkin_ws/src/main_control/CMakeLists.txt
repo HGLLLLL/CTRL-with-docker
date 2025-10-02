@@ -172,7 +172,6 @@ catkin_install_python(PROGRAMS
   scripts/orange.py
   scripts/task_launcher.py
   scripts/serial_listener.py
-  scripts/test.py
   scripts/A_B_C_D.py
   scripts/A_B_C_D_1.py
   scripts/B_C_D.py
