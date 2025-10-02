@@ -1128,7 +1128,8 @@ class MainController:
 
                 elif current_state == "0":
                     self.navigate_by_wall(angle=0.0, align_wall="left")
-                    self.navigate_by_wall(rear=4.25, angle=0.0, align_wall="left")
+                    self.navigate_by_wall(rear=3, angle=0.0, align_wall="left")
+                    self.navigate_by_odometry(forward=1.01)
                     rospy.loginfo("All tasks completed successfully!")
                     return True
         
@@ -1213,7 +1214,7 @@ class MainController:
 ##########################################################################################
             if current_state == "NAV_AFTER_BASKET":
                 # time.sleep(3)
-                if self.navigate_by_wall(rear=4.45, angle=0.0, align_wall="left"):
+                if self.navigate_by_wall(rear=4.35, angle=0.0, align_wall="left"):
                     current_state = "1"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -1221,11 +1222,26 @@ class MainController:
             elif current_state == "1":
                 # time.sleep(3)
                 if self.navigate_by_wall(left=1.81, angle=0.0, align_wall="left"):
-                    current_state = "2"
+                    current_state = "2.1"
                 else:
                     current_state = "ERROR_RECOVERY"
 
-            elif current_state == "2":
+            elif current_state == "2.1":
+                # time.sleep(3)
+                if self.navigate_by_wall(rear=4.45, angle=0.0, align_wall="left"):
+                    current_state = "2.2"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            elif current_state == "2.2":
+                # time.sleep(3)
+                if self.navigate_by_wall(left=1.81, angle=0.0, align_wall="left"):
+                    current_state = "2.3"
+                else:
+                    current_state = "ERROR_RECOVERY"
+            
+
+            elif current_state == "2.3":
                 if self.navigate_by_wall(left = 1.871, rear=4.79, angle=0.0, align_wall="left"):
                     current_state = "3"
                 else:

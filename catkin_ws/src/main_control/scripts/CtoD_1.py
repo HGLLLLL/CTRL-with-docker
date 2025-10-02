@@ -1213,7 +1213,7 @@ class MainController:
 ##########################################################################################
             if current_state == "NAV_AFTER_BASKET":
                 # time.sleep(3)
-                if self.navigate_by_wall(rear=4.45, angle=0.0, align_wall="left"):
+                if self.navigate_by_wall(rear=4.15, left=4.1, angle=0.0, align_wall="left"):
                     current_state = "1"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -1221,7 +1221,19 @@ class MainController:
             elif current_state == "1":
                 # time.sleep(3)
                 if self.navigate_by_wall(left=1.81, angle=0.0, align_wall="left"):
-                    self.navigate_by_wall(rear=4.45, left = 1.81, angle=0.0, align_wall="left")
+                    self.navigate_by_wall(rear=4.35, left = 1.81, angle=0.0, align_wall="left")
+                    current_state = "1.1"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            elif current_state == "1.1":
+                if self.navigate_by_wall(rear=4.45, angle=0.0, align_wall="left"):
+                    current_state = "1.2"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            elif current_state == "1.2":
+                if self.navigate_by_wall(left=1.81, angle=0.0, align_wall="left"):
                     current_state = "2"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -1340,7 +1352,7 @@ class MainController:
 
 
     def A_B_C_D_flow(self):
-        current_state = "S_SHAPE_DONE"
+        current_state = "BASKET_FLOW_DONE"
         rate = rospy.Rate(10)
 
         while not rospy.is_shutdown():
