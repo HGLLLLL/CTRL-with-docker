@@ -243,7 +243,10 @@ class App:
                         elif rel_x > 0:
                             cup_positions[cup_name] = 'right'
                         else:
-                            cup_positions[cup_name] = 'unknow'
+                            if target_name == "black":
+                                cup_positions[cup_name] = 'right'
+                            else:
+                                cup_positions[cup_name] = 'left'
 
             
             cup_side = cup_positions.get(target_name, "")
