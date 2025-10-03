@@ -211,7 +211,7 @@ class LineDetectorHybridThreshold:
         largest_contour = max(contours, key=cv2.contourArea)
         
         # MODIFIED: Simplified logic for T-junction detection
-        if cv2.contourArea(largest_contour) > 31600:
+        if cv2.contourArea(largest_contour) > 36600:
             rospy.loginfo_throttle(1, "Large area detected, treating as T_JUNCTION.")
             cv2.drawContours(roi, [largest_contour], -1, (0, 0, 255), 3) # Draw in red for emphasis
             return "T_JUNCTION"

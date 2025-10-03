@@ -1137,7 +1137,7 @@ class MainController:
                     current_state = "ERROR_RECOVERY" 
 
             elif current_state == "back to get basket":
-                if self.navigate_by_wall(left=0.708, angle=0, align_wall="left") and self.navigate_by_wall(rear = 3.8, angle=0, align_wall="right"):
+                if self.navigate_by_wall(left=0.708, angle=0, align_wall="left") and self.navigate_by_wall(rear = 3.8, angle=0, align_wall="left"):
                     self.navigate_by_odometry(forward=-0.1)
                     current_state = "grip down"
                 else:
@@ -1150,13 +1150,19 @@ class MainController:
                     current_state = "ERROR_RECOVERY" 
 
             elif current_state == "go to put basket":
-                if self.navigate_by_wall(rear = 3.7, left=4.090, angle=0, align_wall="left"):
-                    current_state = "turn for put basket"
+                if self.navigate_by_wall(rear = 3.9, left=0.708, angle=0, align_wall="left"):
+                    current_state = "turn for put basket in setpoint"
                 else:
                     current_state = "ERROR_RECOVERY" 
 
+            elif current_state == "turn for put basket in setpoint":
+                if self.navigate_by_wall(rear = 3.9, left=4.03, angle=0, align_wall="left"):
+                    current_state = "turn for put basket"
+                else:
+                    current_state = "ERROR_RECOVERY"   
+
             elif current_state == "turn for put basket":
-                if self.navigate_by_wall(rear=0.841, left = 4.090, angle = 0, align_wall="left"):
+                if self.navigate_by_wall(rear=0.841, left = 4.03, angle = 0, align_wall="left"):
                     current_state = "grip up"
                 else:
                     current_state = "ERROR_RECOVERY" 
@@ -1196,21 +1202,25 @@ class MainController:
 
 ##########################################################################################
             if current_state == "NAV_AFTER_BASKET":
-                # time.sleep(3)
-                if self.navigate_by_wall(rear=4.54, angle=0.0, align_wall="right"):
+                if self.navigate_by_wall(rear=4.3, right=1.8, angle=0.0, align_wall="right"):
                     current_state = "1"
                 else:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "1":
-                # time.sleep(3)
+                if self.navigate_by_wall(rear=4.46, right=1.8, angle=0.0, align_wall="right"):
+                    current_state = "1.1"
+                else:
+                    current_state = "ERROR_RECOVERY"
+
+            elif current_state == "1.1":
                 if self.navigate_by_wall(right=1.8, angle=0.0, align_wall="right"):
                     current_state = "2"
                 else:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "2":
-                if self.navigate_by_wall(rear=4.82,right = 1.85, angle=0.0, align_wall="right"):
+                if self.navigate_by_wall(rear=4.78, right = 1.854, angle=0.0, align_wall="right"):
                     current_state = "3"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -1236,8 +1246,8 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "7":
-                if self.navigate_by_wall(left = 5.43,rear=3.55, angle=0.0, align_wall="rear"):
-                    self.navigate_by_wall(left = 5.43,rear=3.55, angle=0.0, align_wall="rear")
+                if self.navigate_by_wall(left = 5.43,rear=3.53, angle=0.0, align_wall="rear"):
+                    self.navigate_by_wall(left = 5.43,rear=3.53, angle=0.0, align_wall="rear")
                     current_state = "11"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -1257,20 +1267,20 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "13":
-                if self.navigate_by_wall(right = 6.45, angle=0.0, align_wall="rear"):
+                if self.navigate_by_wall(right = 6.42, angle=0.0, align_wall="rear"):
                     current_state = "20"
                 else:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "20":
-                if self.navigate_by_wall(right = 6.45,front=1.107, angle=0.0, align_wall="right"):
-                    self.navigate_by_wall(right = 6.45,front=1.107, angle=0.0, align_wall="right")
+                if self.navigate_by_wall(right = 6.436, front=1.107, angle=0.0, align_wall="right"):
+                    self.navigate_by_wall(right = 6.436, front=1.107, angle=0.0, align_wall="right")
                     current_state = "21"
                 else:
                     current_state = "ERROR_RECOVERY"
             
             elif current_state == "21":
-                if self.navigate_by_wall(right=6.45, angle=0.0, align_wall="front"):
+                if self.navigate_by_wall(right=6.436, angle=0.0, align_wall="front"):
                     current_state = "22"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -1290,13 +1300,13 @@ class MainController:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "24":
-                if self.navigate_by_wall(right=0.52, angle=0.0,align_wall="right"):
+                if self.navigate_by_wall(right=0.518, angle=0.0,align_wall="right"):
                     current_state = "25"
                 else:
                     current_state = "ERROR_RECOVERY"
 
             elif current_state == "25":
-                if self.navigate_by_wall(right = 0.52, rear=1.2, angle=0.0, align_wall="rear"):
+                if self.navigate_by_wall(right = 0.52, rear=1.3, angle=0.0, align_wall="rear"):
                     current_state = "29"
                 else:
                     current_state = "ERROR_RECOVERY"
@@ -1312,7 +1322,6 @@ class MainController:
             rate.sleep()
             
         return False
-
 
 
     def A_B_C_D_flow(self):
