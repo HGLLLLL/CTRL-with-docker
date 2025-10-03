@@ -1266,15 +1266,8 @@ class MainController:
                     current_state = "6"
                 else:
                     current_state = "ERROR_RECOVERY"
-
-            elif current_state == "6":
-                if self.navigate_by_wall(right = 5.37, front=1.04, angle=0.0, align_wall="rear"):
-                    current_state = "7"
-                else:
-                    current_state = "ERROR_RECOVERY"
             
-
-            elif current_state == "7":
+            elif current_state == "6":
                 if self.navigate_by_wall(right = 5.404,front = 1.189, angle=0.0, align_wall="front"):
                     self.navigate_by_wall(right = 5.404,front = 1.189, angle=0.0, align_wall="front")
                     current_state = "11"
