@@ -1,9 +1,0 @@
-<launch>
-  <include file="$(find dlv_plate_ctrl)/launch/four_wheeled_motor.launch" />
-
-  <include file="$(find odom_two_wheel_chassis)/launch/odom_mecanum.launch" />
-  
-  <node pkg="main_control" name="A_to_C_motor" type="A_to_C_motor.py" output="screen"/>
-
-
-</launch>

@@ -1,5 +1,5 @@
 # Set the udev rule , make the device_port be fixed by dlv plate (AQMD6010BLS motor driver)
 #ATTRS{idProduct}=="6001", ATTRS{idVendor}=="0403", SYMLINK+="plate"
 #KERNEL=="ttyUSB*|ttyACM*", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", MODE:="0777", SYMLINK+="plate"
-ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", KERNELS=="3-2.4.4.2", SYMLINK+="plate"
+ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", SYMLINK+="plate"
 

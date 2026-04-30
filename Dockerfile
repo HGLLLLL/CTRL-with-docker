@@ -115,18 +115,18 @@ RUN apt-get update && apt-get install -y ros-noetic-laser-geometry
 
 
 # Install ira_laser_tools for merging scans
-RUN apt-get update && apt-get install -y ros-noetic-ira-laser-tools
+# RUN apt-get update && apt-get install -y ros-noetic-ira-laser-tools
 
 
 # Install ros-noetic-turtlebot3-description
-RUN apt-get update && apt-get install -y ros-noetic-turtlebot3-description
+# RUN apt-get update && apt-get install -y ros-noetic-turtlebot3-description
 
 
 # Install gazebo
-COPY scripts/gazebo.sh /root/scripts/gazebo.sh
-RUN chmod +x /root/scripts/gazebo.sh
-RUN cd /root && /root/scripts/gazebo.sh
-RUN apt-get install ros-noetic-gazebo-ros -y
+# COPY scripts/gazebo.sh /root/scripts/gazebo.sh
+# RUN chmod +x /root/scripts/gazebo.sh
+# RUN cd /root && /root/scripts/gazebo.sh
+# RUN apt-get install ros-noetic-gazebo-ros -y
 
 
 # Install ros_xacro
@@ -150,28 +150,28 @@ RUN apt-get update && apt-get install -y xwayland
 
 
 # Install realsense2_camera
-RUN apt-get update && apt-get install -y ros-noetic-realsense2-camera
+# RUN apt-get update && apt-get install -y ros-noetic-realsense2-camera
 
 
 # Download Gmapping
-RUN apt-get install ros-noetic-gmapping -y
-RUN apt-get install ros-noetic-slam-gmapping -y
+# RUN apt-get install ros-noetic-gmapping -y
+# RUN apt-get install ros-noetic-slam-gmapping -y
 
 
 # Save map and opened by gazebo
-RUN apt-get install ros-noetic-map-server -y
+# RUN apt-get install ros-noetic-map-server -y
 
 
 # Download ROS navigation
-RUN apt-get install ros-noetic-navigation -y
+# RUN apt-get install ros-noetic-navigation -y
 
 
 # Support robot can be controled by keyboard
-RUN apt-get install ros-noetic-teleop-twist-keyboard -y
+# RUN apt-get install ros-noetic-teleop-twist-keyboard -y
 
 
 # Teleop using rosboard
-RUN apt-get install ros-noetic-rosbridge-server -y
+# RUN apt-get install ros-noetic-rosbridge-server -y
 
 
 # Install pkgs to generate terminal QR code
@@ -200,7 +200,7 @@ RUN apt-get install ros-noetic-robot-state-publisher -y
 
 
 # Install ros-noetic-robot-localization
-RUN apt-get install ros-noetic-robot-localization -y
+# RUN apt-get install ros-noetic-robot-localization -y
 
 # Install htop
 RUN apt-get install htop -y
@@ -220,7 +220,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 
 # Install pyrealsense2
-RUN pip3 install pyrealsense2
+# RUN pip3 install pyrealsense2
 
 
 #SSHD SETUP
