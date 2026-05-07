@@ -1,7 +1,0 @@
-<launch>
-  <rosparam file="$(find dlv_plate_ctrl)/param/pid.yaml" command="load" />
-  
-  <node pkg="dlv_plate_ctrl" name="four_wheeled_motor_comm" type="four_wheeled_motor_comm" output="screen"/>
-
-  <!-- <node pkg="dlv_plate_ctrl" name="test_sub" type="test_sub" output="screen"/> -->
-</launch>

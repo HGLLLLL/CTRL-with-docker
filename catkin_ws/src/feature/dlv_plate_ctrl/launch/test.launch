@@ -1,4 +1,0 @@
-<launch>
-  <node pkg="dlv_plate_ctrl" name="test_sub" type="test_sub" output="screen">
-  </node>
-</launch>

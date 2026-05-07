@@ -1,4 +1,0 @@
-<launch>
-  <node pkg="odom_two_wheel_chassis" name="odom_mecanum" type="odom_mecanum" output="screen">
-  </node>
-</launch>

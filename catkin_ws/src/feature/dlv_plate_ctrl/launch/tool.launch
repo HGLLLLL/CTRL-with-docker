@@ -1,4 +1,0 @@
-<launch>
-  <node pkg="dlv_plate_ctrl" name="motor_tool" type="motor_tool" output="screen">
-  </node>
-</launch>

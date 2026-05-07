@@ -1,5 +1,0 @@
-string coffee_type
----
-bool success
-float32 depth
-int32 step_motor
