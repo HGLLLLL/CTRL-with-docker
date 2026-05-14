@@ -1,6 +1,0 @@
-# Request
-bool enable   # true 代表啟動循線, false 代表停止
----
-# Response
-bool success  # true 代表指令成功執行
-string message 

@@ -1,7 +1,0 @@
-<launch>
-    <!-- 啟動感知節點，它會一直運行 -->
-    <node pkg="line_follower" type="line_detect.py" name="line_detect" output="screen"/>
-
-    <!-- 啟動新的服務器節點 -->
-    <node pkg="line_follower" type="line_following_nav_srv.py" name="line_following_nav_srv" output="screen"/>
-</launch>
