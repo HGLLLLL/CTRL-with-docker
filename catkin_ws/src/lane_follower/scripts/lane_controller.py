@@ -10,9 +10,9 @@ class LaneController:
         rospy.init_node('lane_controller', anonymous=True)
         
         # 控制參數 (P/D gains) - 可透過 ROS parameter 自行調校
-        self.kp = rospy.get_param('~kp', 0.005)
-        self.kd = rospy.get_param('~kd', 0.001)
-        self.base_speed = rospy.get_param('~base_speed', 0.2) # 車子的預設線速度 (m/s)
+        self.kp = rospy.get_param('~kp', 0.003)
+        self.kd = rospy.get_param('~kd', 0.002)
+        self.base_speed = rospy.get_param('~base_speed', 0.5) # 車子的預設線速度 (m/s)
         
         self.prev_offset = 0.0
         self.last_time = rospy.Time.now()
