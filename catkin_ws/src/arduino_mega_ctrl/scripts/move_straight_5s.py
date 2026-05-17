@@ -26,11 +26,11 @@ def main():
     twist_msg.angular.z = 0.0
     
     # Publish the forward command once
-    rospy.loginfo("Publishing single command: linear.x = 0.3")
+    rospy.loginfo("Publishing single command: linear.x = 0.5")
     pub.publish(twist_msg)
     
     # Wait for exactly 5 seconds
-    rospy.loginfo("Sleeping for 3 seconds...")
+    rospy.loginfo("Sleeping for 2 seconds...")
     rospy.sleep(3.0)
     
     # Create Twist message for stopping
