@@ -13,18 +13,18 @@ def main():
     
     # Wait briefly to ensure the subscriber on the Arduino/ROS side is connected.
     rospy.loginfo("Waiting for publisher to establish connection...")
-    rospy.sleep(5.0)
+    rospy.sleep(10.0)
     
     # Create Twist message for moving forward
     twist_msg = Twist()
-    twist_msg.linear.x = 0.3
+    twist_msg.linear.x = 0.5
     twist_msg.linear.y = 0.0
     twist_msg.linear.z = 0.0
     twist_msg.angular.x = 0.0
     twist_msg.angular.y = 0.0
     twist_msg.angular.z = 0.0
     
-    duration = 10.0
+    duration = 6.0
     rate = rospy.Rate(10) # 10 Hz
     
     rospy.loginfo("Publishing continuously: linear.x = %.2f for %.1f seconds", twist_msg.linear.x, duration)
