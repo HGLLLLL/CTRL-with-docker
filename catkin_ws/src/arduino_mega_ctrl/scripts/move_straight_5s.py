@@ -31,7 +31,7 @@ def main():
     
     # Wait for exactly 5 seconds
     rospy.loginfo("Sleeping for 2 seconds...")
-    rospy.sleep(3.0)
+    rospy.sleep(10.0)
     
     # Create Twist message for stopping
     twist_msg.linear.x = 0.0
