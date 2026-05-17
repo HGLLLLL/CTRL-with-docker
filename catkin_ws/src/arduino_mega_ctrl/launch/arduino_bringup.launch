@@ -5,4 +5,10 @@
         <param name="port" value="/dev/ttyUSB0"/>
         <param name="baud" value="57600"/>
     </node>
+
+    <node name="move_straight_5s"
+        pkg="arduino_mega_ctrl"
+        type="move_straight_5s.py"
+        output="screen"
+    />
 </launch>
