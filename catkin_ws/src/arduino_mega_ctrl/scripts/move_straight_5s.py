@@ -12,7 +12,6 @@ def main():
     pub = rospy.Publisher('arduino_vel', Twist, queue_size=10)
     
     # Wait briefly to ensure the subscriber on the Arduino/ROS side is connected.
-    # Otherwise, publishing immediately might result in a lost message.
     rospy.loginfo("Waiting for publisher to establish connection...")
     rospy.sleep(1.0)
     
@@ -25,24 +24,31 @@ def main():
     twist_msg.angular.y = 0.0
     twist_msg.angular.z = 0.0
     
-    # Publish the forward command once
-    rospy.loginfo("Publishing single command: linear.x = 0.5")
-    pub.publish(twist_msg)
+    duration = 10.0
+    rate = rospy.Rate(10) # 10 Hz
     
-    # Wait for exactly 5 seconds
-    rospy.loginfo("Sleeping for 2 seconds...")
-    rospy.sleep(10.0)
+    rospy.loginfo("Publishing continuously: linear.x = %.2f for %.1f seconds", twist_msg.linear.x, duration)
+    
+    # Wait for valid time
+    while not rospy.is_shutdown() and rospy.Time.now().to_sec() == 0:
+        rate.sleep()
+        
+    start_time = rospy.Time.now()
+    
+    while not rospy.is_shutdown() and (rospy.Time.now() - start_time).to_sec() < duration:
+        pub.publish(twist_msg)
+        rate.sleep()
     
     # Create Twist message for stopping
     twist_msg.linear.x = 0.0
     
-    # Publish the stop command
-    rospy.loginfo("Publishing single command: linear.x = 0.0 (Stop)")
-    pub.publish(twist_msg)
-    
-    # Wait a tiny bit to ensure the message is transmitted over the ROS network
-    # before the node is killed and sockets are closed.
-    rospy.sleep(0.5)
+    # Publish the stop command a few times to ensure it is received
+    rospy.loginfo("Publishing stop command: linear.x = 0.0")
+    for _ in range(5):
+        if rospy.is_shutdown():
+            break
+        pub.publish(twist_msg)
+        rate.sleep()
     
     rospy.loginfo("Finished. Exiting node.")
 
