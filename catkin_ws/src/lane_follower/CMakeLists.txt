@@ -7,7 +7,10 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   message_generation
 )
-
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES lane_follower
@@ -20,10 +23,7 @@ add_message_files(
   LaneData.msg
 )
 
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-)
+
 
 include_directories(
   ${catkin_INCLUDE_DIRS}
