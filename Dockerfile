@@ -37,6 +37,8 @@ RUN apt-get update && \
       ros-noetic-rosserial-arduino \
       ros-noetic-rosserial-python \
       ros-noetic-rplidar-ros \
+      python3-scipy \
+      python3-matplotlib \
       && rm -rf /var/lib/apt/lists/*
 
 # 2. 集中安裝 Python 相關套件 (加上 --no-cache-dir 避免快取佔用空間)
@@ -44,8 +46,6 @@ RUN pip3 install --no-cache-dir \
     pyserial \
     qrcode_terminal \
     tornado \
-    opencv-python-headless \
-    numpy \
     filterpy
     # torch \
     # torchvision \
