@@ -34,5 +34,6 @@ catkin_install_python(PROGRAMS
   scripts/lane_detect.py
   scripts/lane_controller.py
   scripts/lane_controller_fuzzy.py
+  scripts/lane_detect_v2.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
