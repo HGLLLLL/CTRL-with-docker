@@ -7,20 +7,22 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   message_generation
 )
+
+add_message_files(
+  FILES
+  LaneData.msg
+)
+
 generate_messages(
   DEPENDENCIES
   std_msgs
 )
+
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES lane_follower
   CATKIN_DEPENDS rospy sensor_msgs cv_bridge message_runtime
 #  DEPENDS system_lib
-)
-
-add_message_files(
-  FILES
-  LaneData.msg
 )
 
 
