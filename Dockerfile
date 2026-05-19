@@ -45,7 +45,8 @@ RUN pip3 install --no-cache-dir \
     qrcode_terminal \
     tornado \
     opencv-python-headless \
-    numpy
+    numpy \
+    filterpy
     # torch \
     # torchvision \
     # ultralytics
