@@ -1324,6 +1324,7 @@ class LaneDetectNode:
         self.image_topic = rospy.get_param('~image_topic', '/dev/video0')
         self.pub_topic = rospy.get_param('~pub_topic', 'lane_detect')
         self.debug_topic = rospy.get_param('~debug_topic', 'lane_detect/image_out')
+        self.binary_topic = rospy.get_param('~binary_topic', 'lane_detect/image_binary')
         self.show_window = rospy.get_param('~show_window', False)
         
         self.bridge = CvBridge()
@@ -1331,6 +1332,7 @@ class LaneDetectNode:
         # Setup Publishers
         self.lane_pub = rospy.Publisher(self.pub_topic, LaneData, queue_size=10)
         self.debug_pub = rospy.Publisher(self.debug_topic, Image, queue_size=1)
+        self.binary_pub = rospy.Publisher(self.binary_topic, Image, queue_size=1)
         
         # Initialize Config & Pipeline Modules
         self.cfg = Config()
@@ -1400,6 +1402,13 @@ class LaneDetectNode:
         msg.angle = smoothed.yaw_deg if smoothed.yaw_deg is not None else 0.0
         self.lane_pub.publish(msg)
         
+        if self.binary_pub.get_num_connections() > 0:
+            try:
+                binary_msg = self.bridge.cv2_to_imgmsg(pre.binary, "mono8")
+                self.binary_pub.publish(binary_msg)
+            except CvBridgeError as e:
+                rospy.logerr(f"CvBridge Error (binary image): {e}")
+
         if self.debug_pub.get_num_connections() > 0 or self.show_window:
             fit_mock = FitResult(None, None, False, False, None, None, None, None, None, None, None, None)
             ri = RenderInputs(

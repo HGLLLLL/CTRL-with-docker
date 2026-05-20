@@ -85,8 +85,23 @@ class LaneControllerFuzzy:
         # Subscriber: Subscribe to the custom message containing offset and angle
         self.lane_sub = rospy.Subscriber('lane_detect', LaneData, self.lane_callback)
         
+        # 註冊關閉時的回調函數，讓車子可以安全煞停
+        rospy.on_shutdown(self.shutdown_hook)
+        
         rospy.loginfo("Fuzzy Lane Controller Started.")
         rospy.loginfo("Max Angular Speed: %.2f rad/s, Base Speed: %.2f m/s", self.max_angular, self.base_speed)
+
+    def shutdown_hook(self):
+        rospy.loginfo("Shutting down... Stopping the car.")
+        twist = Twist()
+        twist.linear.x = 0.0
+        twist.linear.y = 0.0
+        twist.linear.z = 0.0
+        twist.angular.x = 0.0
+        twist.angular.y = 0.0
+        twist.angular.z = 0.0
+        self.cmd_pub.publish(twist)
+        rospy.sleep(0.1) # 給一點時間讓訊息發送出去
 
     def lane_callback(self, msg):
         offset = msg.offset
