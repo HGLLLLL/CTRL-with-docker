@@ -1342,17 +1342,22 @@ class LaneDetectNode:
         self.prev_t = None
         self.fps_smoothed = 0.0
         self.fps_alpha = 0.1
+        self.cap = None
+        self.image_sub = None
         
-        self.image_sub = rospy.Subscriber(self.image_topic, Image, self.image_callback, queue_size=1)
-        rospy.loginfo(f"LaneDetectNode initialized. Subscribing to: {self.image_topic}")
+        # Check if image_topic looks like a device port (/dev/videoX) or a number
+        if str(self.image_topic).isdigit() or str(self.image_topic).startswith('/dev/video'):
+            port = int(self.image_topic) if str(self.image_topic).isdigit() else self.image_topic
+            self.cap = cv2.VideoCapture(port)
+            if self.cap.isOpened():
+                rospy.loginfo(f"LaneDetectNode initialized. Directly capturing from hardware: {self.image_topic}")
+            else:
+                rospy.logerr(f"Failed to open video port: {self.image_topic}")
+        else:
+            self.image_sub = rospy.Subscriber(self.image_topic, Image, self.image_callback, queue_size=1)
+            rospy.loginfo(f"LaneDetectNode initialized. Subscribing to: {self.image_topic}")
 
-    def image_callback(self, data):
-        try:
-            cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
-        except CvBridgeError as e:
-            rospy.logerr(f"CvBridge Error: {e}")
-            return
-
+    def process_frame(self, cv_image):
         h, w = cv_image.shape[:2]
         now = rospy.Time.now().to_sec()
         
@@ -1419,9 +1424,40 @@ class LaneDetectNode:
                 except CvBridgeError as e:
                     rospy.logerr(f"CvBridge Error (debug image): {e}")
 
+    def image_callback(self, data):
+        try:
+            cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
+        except CvBridgeError as e:
+            rospy.logerr(f"CvBridge Error: {e}")
+            return
+
+        self.process_frame(cv_image)
+
+    def run(self):
+        if self.cap is not None:
+            rate = rospy.Rate(self.cfg.TARGET_FPS)
+            while not rospy.is_shutdown():
+                if not self.cap.isOpened():
+                    rate.sleep()
+                    continue
+                
+                ret, frame = self.cap.read()
+                if not ret:
+                    rospy.logwarn_throttle(1.0, f"Cannot read frame from {self.image_topic}")
+                    rate.sleep()
+                    continue
+                
+                self.process_frame(frame)
+                rate.sleep()
+                
+            self.cap.release()
+            cv2.destroyAllWindows()
+        else:
+            rospy.spin()
+
 if __name__ == "__main__":
     try:
         node = LaneDetectNode()
-        rospy.spin()
+        node.run()
     except rospy.ROSInterruptException:
         pass
