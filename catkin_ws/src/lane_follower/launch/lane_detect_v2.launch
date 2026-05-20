@@ -10,6 +10,6 @@
         <param name="debug_topic" value="lane_detect/image_out" />
         
         <!-- Open local GUI window to show the detection result -->
-        <param name="show_window" value="true" />
+        <param name="show_window" value="false" />
     </node>
 </launch>
