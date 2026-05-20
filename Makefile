@@ -11,7 +11,7 @@ run:
 
 	docker run -it --rm \
 		--privileged \
-		--net=host \
+		-p 8080:8080 \
 		--name $(CONTAINER_NAME) \
 		--ulimit nofile=1024:524288 \
 		--mount type=bind,source=$(shell pwd)/catkin_ws,target=/root/catkin_ws \
