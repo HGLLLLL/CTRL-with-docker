@@ -16,6 +16,6 @@
     <!-- 模糊控制節點 -->
     <node pkg="lane_follower" type="lane_controller_fuzzy.py" name="lane_controller_fuzzy" output="screen">
         <param name="base_speed" value="0.5" />
-        <param name="max_angular" value="0.8" />
+        <param name="max_angular" value="1.4" />
     </node>
 </launch>

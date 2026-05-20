@@ -285,7 +285,7 @@ class Config:
     # ------- Measure --------------------------------------------------------
     # Ratio (0‑1) of image height where the anchor point is placed. 0.85 places
     # the measurement line near the bottom of the image.
-    ANCHOR_RATIO: float = 0.50
+    ANCHOR_RATIO: float = 0.8
     # Number of recent lane‑width samples kept for width‑estimation when only one
     # side is visible.
     LANE_WIDTH_HISTORY_LEN: int = 30
@@ -333,7 +333,7 @@ class Config:
     # slope.  This is more computationally expensive but provides a true
     # heading angle.  Users can enable it via `--enable-yaw-b` CLI flag or
     # by overriding the config in code: `Config(ENABLE_YAW_B=True)`.
-    ENABLE_YAW_B: bool = False
+    ENABLE_YAW_B: bool = True
 
 
 # ============================================================
