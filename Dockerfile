@@ -37,6 +37,7 @@ RUN apt-get update && \
       ros-noetic-rosserial-arduino \
       ros-noetic-rosserial-python \
       ros-noetic-rplidar-ros \
+      ros-noetic-web-video-server \
       python3-scipy \
       python3-matplotlib \
       && rm -rf /var/lib/apt/lists/*
