@@ -5,9 +5,15 @@
         <param name="baud" value="115200"/>
     </node>
 
+    <!-- 統一的攝影機影像發布節點 -->
+    <node pkg="camera" type="camera.py" name="camera_node" output="screen">
+        <param name="camera_id" value="/dev/video0" />
+    </node>
+
     <!-- 車道辨識節點 -->
     <node pkg="lane_follower" type="lane_detect_v2.py" name="lane_detect_node" output="screen">
-        <param name="image_topic" value="/dev/video0" />
+        <!-- 訂閱上方統一發布出來的 ROS Topic -->
+        <param name="image_topic" value="/camera/image_raw" />
         <param name="pub_topic" value="lane_detect" />
         <param name="debug_topic" value="lane_detect/image_out" />
         <param name="show_window" value="false" />
@@ -21,9 +27,16 @@
         <param name="max_predict_frames" value="15" />
     </node>
 
+    <node pkg="lane_follower" type="turn_detect.py" name="turn_detect_node" output="screen">
+        <param name="image_topic" value="/camera/image_raw" />
+        <param name="show_window" value="false" />
+    </node>
+
     <!-- 模糊控制節點 -->
     <node pkg="lane_follower" type="lane_controller_fuzzy.py" name="lane_controller_fuzzy" output="screen">
         <param name="base_speed" value="0.5" />
         <param name="max_angular" value="1.4" />
+        <param name="turn_pixel_threshold" value="1000.0" />
+        <param name="hard_turn_angular" value="2.0" />
     </node>
 </launch>

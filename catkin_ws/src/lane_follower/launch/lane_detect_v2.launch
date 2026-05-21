@@ -1,15 +1,29 @@
 <launch>
+
+    <node pkg="camera" type="camera.py" name="camera_node" output="screen">
+        <param name="camera_id" value="/dev/video0" />
+    </node>
+
+    <!-- 車道辨識節點 -->
     <node pkg="lane_follower" type="lane_detect_v2.py" name="lane_detect_node" output="screen">
-        <!-- The camera image topic to subscribe to -->
-        <param name="image_topic" value="/dev/video0" />
-        
-        <!-- The lane detection results topic to publish to (LaneData message) -->
+        <!-- 訂閱上方統一發布出來的 ROS Topic -->
+        <param name="image_topic" value="/camera/image_raw" />
         <param name="pub_topic" value="lane_detect" />
-        
-        <!-- The debug image topic to publish to -->
         <param name="debug_topic" value="lane_detect/image_out" />
+        <param name="show_window" value="false" />
         
-        <!-- Open local GUI window to show the detection result -->
+        <!-- Algorithm Configurations -->
+        <param name="strict_roi" value="true" />
+        <param name="min_contour_area" value="500.0" />
+        <param name="anchor_ratio" value="0.8" />
+        <param name="lane_width_history_len" value="30" />
+        <param name="enable_yaw_b" value="true" />
+        <param name="max_predict_frames" value="15" />
+    </node>
+
+    <node pkg="lane_follower" type="turn_detect.py" name="turn_detect_node" output="screen">
+        <param name="image_topic" value="/camera/image_raw" />
         <param name="show_window" value="false" />
     </node>
+    
 </launch>
