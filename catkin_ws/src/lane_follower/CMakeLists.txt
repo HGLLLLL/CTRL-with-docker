@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   LaneData.msg
+  TurnDetect.msg
 )
 
 generate_messages(

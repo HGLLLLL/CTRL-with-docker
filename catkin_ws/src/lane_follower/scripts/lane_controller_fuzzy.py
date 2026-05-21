@@ -6,9 +6,9 @@ from geometry_msgs.msg import Twist
 import sys
 
 try:
-    from lane_follower.msg import LaneData
+    from lane_follower.msg import LaneData, TurnDetect
 except ImportError:
-    rospy.logerr("Cannot import LaneData! Please ensure you have run 'catkin_make' and 'source devel/setup.bash' after creating the custom message.")
+    rospy.logerr("Cannot import LaneData or TurnDetect! Please ensure you have run 'catkin_make' and 'source devel/setup.bash' after creating the custom message.")
     sys.exit(1)
 
 class FuzzyLogicController:
@@ -75,6 +75,11 @@ class LaneControllerFuzzy:
         # Read parameters
         self.base_speed = rospy.get_param('~base_speed', 0.5)
         self.max_angular = rospy.get_param('~max_angular', 1.0) # Max angular velocity is +/- 1.0 rad/s
+        self.turn_pixel_threshold = rospy.get_param('~turn_pixel_threshold', 1000.0)
+        self.hard_turn_angular = rospy.get_param('~hard_turn_angular', 2.0)
+        
+        # Turn state
+        self.is_turning = False
         
         # Initialize Fuzzy Controller
         self.fuzzy_controller = FuzzyLogicController()
@@ -84,6 +89,7 @@ class LaneControllerFuzzy:
         
         # Subscriber: Subscribe to the custom message containing offset and angle
         self.lane_sub = rospy.Subscriber('lane_detect', LaneData, self.lane_callback)
+        self.turn_sub = rospy.Subscriber('turn_detect', TurnDetect, self.turn_callback)
         
         # 註冊關閉時的回調函數，讓車子可以安全煞停
         rospy.on_shutdown(self.shutdown_hook)
@@ -103,7 +109,24 @@ class LaneControllerFuzzy:
         self.cmd_pub.publish(twist)
         rospy.sleep(0.1) # 給一點時間讓訊息發送出去
 
+    def turn_callback(self, msg):
+        if msg.turn_direction in ['left', 'right'] and msg.pixel_size > self.turn_pixel_threshold:
+            self.is_turning = True
+            twist = Twist()
+            twist.linear.x = self.base_speed
+            twist.linear.y = 0.0
+            twist.linear.z = 0.0
+            twist.angular.x = 0.0
+            twist.angular.y = 0.0
+            twist.angular.z = self.hard_turn_angular if msg.turn_direction == 'left' else -self.hard_turn_angular
+            self.cmd_pub.publish(twist)
+        else:
+            self.is_turning = False
+
     def lane_callback(self, msg):
+        if self.is_turning:
+            return  # Skip fuzzy lane following while executing a hard turn
+        
         offset = msg.offset
         angle = msg.angle
         
