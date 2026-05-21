@@ -10,6 +10,12 @@
         <param name="camera_id" value="/dev/video0" />
     </node>
 
+    <node pkg="lane_follower" type="turn_detect.py" name="turn_detect_node" output="screen">
+        <param name="image_topic" value="/camera/image_raw" />
+        <param name="debug_topic" value="turn_detect/image_out" />
+        <param name="show_window" value="false" />
+    </node>
+
     <!-- 車道辨識節點 -->
     <node pkg="lane_follower" type="lane_detect_v2.py" name="lane_detect_node" output="screen">
         <!-- 訂閱上方統一發布出來的 ROS Topic -->
@@ -27,17 +33,13 @@
         <param name="max_predict_frames" value="15" />
     </node>
 
-    <node pkg="lane_follower" type="turn_detect.py" name="turn_detect_node" output="screen">
-        <param name="image_topic" value="/camera/image_raw" />
-        <param name="debug_topic" value="turn_detect/image_out" />
-        <param name="show_window" value="false" />
-    </node>
 
     <!-- 模糊控制節點 -->
     <node pkg="lane_follower" type="lane_controller_fuzzy.py" name="lane_controller_fuzzy" output="screen">
-        <param name="base_speed" value="0.4" />
-        <param name="max_angular" value="1.8" />
-        <param name="turn_pixel_threshold" value="40000.0" />
-        <param name="hard_turn_angular" value="2.0" />
+        <param name="base_speed" value="0.5" />
+        <param name="max_angular" value="1.6" />
+        <param name="turn_pixel_threshold" value="20000.0" />
+        <param name="hard_turn_angular" value="2.0" />        
+        <param name="hard_turn_duration" value="1.0" />    
     </node>
 </launch>

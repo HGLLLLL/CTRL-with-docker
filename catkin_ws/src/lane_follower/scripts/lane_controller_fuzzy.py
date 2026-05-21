@@ -77,9 +77,13 @@ class LaneControllerFuzzy:
         self.max_angular = rospy.get_param('~max_angular', 1.0) # Max angular velocity is +/- 1.0 rad/s
         self.turn_pixel_threshold = rospy.get_param('~turn_pixel_threshold', 1000.0)
         self.hard_turn_angular = rospy.get_param('~hard_turn_angular', 2.0)
+        self.hard_turn_duration = rospy.get_param('~hard_turn_duration', 1.0)
         
         # Turn state
-        self.is_turning = False
+        self.hard_turn_end_time = 0.0
+        self.active_hard_turn_dir = None
+        self.last_sign_time = 0.0
+        self.approaching_sign = False
         
         # Initialize Fuzzy Controller
         self.fuzzy_controller = FuzzyLogicController()
@@ -106,27 +110,61 @@ class LaneControllerFuzzy:
         twist.angular.x = 0.0
         twist.angular.y = 0.0
         twist.angular.z = 0.0
-        self.cmd_pub.publish(twist)
-        rospy.sleep(0.1) # 給一點時間讓訊息發送出去
+        # 大量發送停機指令，確保信號送到 Arduino
+        for _ in range(10):
+            try:
+                self.cmd_pub.publish(twist)
+                rospy.sleep(0.05)
+            except Exception:
+                pass
 
     def turn_callback(self, msg):
-        if msg.turn_direction in ['left', 'right'] and msg.pixel_size > self.turn_pixel_threshold:
-            self.is_turning = True
-            twist = Twist()
-            twist.linear.x = self.base_speed
-            twist.linear.y = 0.0
-            twist.linear.z = 0.0
-            twist.angular.x = 0.0
-            twist.angular.y = 0.0
-            twist.angular.z = self.hard_turn_angular if msg.turn_direction == 'left' else -self.hard_turn_angular
-            self.cmd_pub.publish(twist)
-        else:
-            self.is_turning = False
+        now = rospy.Time.now().to_sec()
+        
+        # 如果目前正在大轉彎，先忽略新的標誌避免重複觸發
+        if now < self.hard_turn_end_time:
+            return
+            
+        if msg.turn_direction in ['left', 'right']:
+            self.last_sign_time = now
+            self.approaching_sign = True
+            
+            # 當標誌大於門檻，觸發大轉彎
+            if msg.pixel_size >= self.turn_pixel_threshold:
+                self.active_hard_turn_dir = msg.turn_direction
+                self.hard_turn_end_time = now + self.hard_turn_duration
+                self.approaching_sign = False
+                rospy.loginfo("Executing hard turn %s for %.2fs", 
+                              msg.turn_direction, self.hard_turn_duration)
 
     def lane_callback(self, msg):
-        if self.is_turning:
-            return  # Skip fuzzy lane following while executing a hard turn
+        now = rospy.Time.now().to_sec()
         
+        twist = Twist()
+        twist.linear.y = 0.0
+        twist.linear.z = 0.0
+        twist.angular.x = 0.0
+        twist.angular.y = 0.0
+        
+        # 第一優先級：目前正在大轉彎
+        if now < self.hard_turn_end_time:
+            twist.linear.x = self.base_speed
+            twist.angular.z = self.hard_turn_angular if self.active_hard_turn_dir == 'left' else -self.hard_turn_angular
+            self.cmd_pub.publish(twist)
+            return
+            
+        # 若超過 0.5 秒沒看到標誌，解除靠近狀態
+        if self.approaching_sign and (now - self.last_sign_time > 0.5):
+            self.approaching_sign = False
+            
+        # 第二優先級：看到了轉彎標誌，但尚未到達門檻 (關閉循線控制，維持直線)
+        if self.approaching_sign:
+            twist.linear.x = self.base_speed
+            twist.angular.z = 0.0
+            self.cmd_pub.publish(twist)
+            return
+        
+        # 第三優先級：正常的模糊循線控制
         offset = msg.offset
         angle = msg.angle
         
@@ -136,12 +174,7 @@ class LaneControllerFuzzy:
         # Scale inference result to the maximum control angular velocity
         angular_z = fuzzy_out * self.max_angular
         
-        twist = Twist()
         twist.linear.x = self.base_speed
-        twist.linear.y = 0.0
-        twist.linear.z = 0.0
-        twist.angular.x = 0.0
-        twist.angular.y = 0.0
         twist.angular.z = angular_z
         
         # Publish motor control command

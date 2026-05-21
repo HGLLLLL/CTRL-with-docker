@@ -39,6 +39,7 @@
         <param name="base_speed" value="0.5" />
         <param name="max_angular" value="1.4" />
         <param name="turn_pixel_threshold" value="40000.0" />
-        <param name="hard_turn_angular" value="2.0" />
+        <param name="hard_turn_angular" value="2.0" />        
+        <param name="hard_turn_duration" value="1.0" />    
     </node>
 </launch>
