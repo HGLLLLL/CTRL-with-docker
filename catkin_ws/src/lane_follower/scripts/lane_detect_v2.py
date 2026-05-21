@@ -1328,15 +1328,18 @@ class LaneDetectNode:
         self.show_window = rospy.get_param('~show_window', False)
 
         # Initialize Config
-        self.cfg = Config()
+        default_cfg = Config()
+        cfg_kwargs = {}
         
         # Override algorithm configurations from ROS Params
-        self.cfg.STRICT_ROI = rospy.get_param('~strict_roi', self.cfg.STRICT_ROI)
-        self.cfg.MIN_CONTOUR_AREA = float(rospy.get_param('~min_contour_area', self.cfg.MIN_CONTOUR_AREA))
-        self.cfg.ANCHOR_RATIO = float(rospy.get_param('~anchor_ratio', self.cfg.ANCHOR_RATIO))
-        self.cfg.LANE_WIDTH_HISTORY_LEN = int(rospy.get_param('~lane_width_history_len', self.cfg.LANE_WIDTH_HISTORY_LEN))
-        self.cfg.ENABLE_YAW_B = rospy.get_param('~enable_yaw_b', self.cfg.ENABLE_YAW_B)
-        self.cfg.MAX_PREDICT_FRAMES = int(rospy.get_param('~max_predict_frames', self.cfg.MAX_PREDICT_FRAMES))
+        cfg_kwargs['STRICT_ROI'] = rospy.get_param('~strict_roi', default_cfg.STRICT_ROI)
+        cfg_kwargs['MIN_CONTOUR_AREA'] = float(rospy.get_param('~min_contour_area', default_cfg.MIN_CONTOUR_AREA))
+        cfg_kwargs['ANCHOR_RATIO'] = float(rospy.get_param('~anchor_ratio', default_cfg.ANCHOR_RATIO))
+        cfg_kwargs['LANE_WIDTH_HISTORY_LEN'] = int(rospy.get_param('~lane_width_history_len', default_cfg.LANE_WIDTH_HISTORY_LEN))
+        cfg_kwargs['ENABLE_YAW_B'] = rospy.get_param('~enable_yaw_b', default_cfg.ENABLE_YAW_B)
+        cfg_kwargs['MAX_PREDICT_FRAMES'] = int(rospy.get_param('~max_predict_frames', default_cfg.MAX_PREDICT_FRAMES))
+        
+        self.cfg = Config(**cfg_kwargs)
         
         self.bridge = CvBridge()
         
