@@ -1326,6 +1326,17 @@ class LaneDetectNode:
         self.debug_topic = rospy.get_param('~debug_topic', 'lane_detect/image_out')
         self.binary_topic = rospy.get_param('~binary_topic', 'lane_detect/image_binary')
         self.show_window = rospy.get_param('~show_window', False)
+
+        # Initialize Config
+        self.cfg = Config()
+        
+        # Override algorithm configurations from ROS Params
+        self.cfg.STRICT_ROI = rospy.get_param('~strict_roi', self.cfg.STRICT_ROI)
+        self.cfg.MIN_CONTOUR_AREA = float(rospy.get_param('~min_contour_area', self.cfg.MIN_CONTOUR_AREA))
+        self.cfg.ANCHOR_RATIO = float(rospy.get_param('~anchor_ratio', self.cfg.ANCHOR_RATIO))
+        self.cfg.LANE_WIDTH_HISTORY_LEN = int(rospy.get_param('~lane_width_history_len', self.cfg.LANE_WIDTH_HISTORY_LEN))
+        self.cfg.ENABLE_YAW_B = rospy.get_param('~enable_yaw_b', self.cfg.ENABLE_YAW_B)
+        self.cfg.MAX_PREDICT_FRAMES = int(rospy.get_param('~max_predict_frames', self.cfg.MAX_PREDICT_FRAMES))
         
         self.bridge = CvBridge()
         
@@ -1334,8 +1345,7 @@ class LaneDetectNode:
         self.debug_pub = rospy.Publisher(self.debug_topic, Image, queue_size=1)
         self.binary_pub = rospy.Publisher(self.binary_topic, Image, queue_size=1)
         
-        # Initialize Config & Pipeline Modules
-        self.cfg = Config()
+        # Initialize Pipeline Modules
         self.tracker = LaneTracker(self.cfg)
         self.smoother = LaneSmoother(self.cfg)
         self.lane_width_history = deque(maxlen=self.cfg.LANE_WIDTH_HISTORY_LEN)

@@ -15,7 +15,7 @@
         <!-- Algorithm Configurations -->
         <param name="strict_roi" value="true" />
         <param name="min_contour_area" value="500.0" />
-        <param name="anchor_ratio" value="0.8" />
+        <param name="anchor_ratio" value="0.75" />
         <param name="lane_width_history_len" value="30" />
         <param name="enable_yaw_b" value="true" />
         <param name="max_predict_frames" value="15" />
