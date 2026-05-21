@@ -30,6 +30,7 @@
     <!-- 轉彎辨識節點 -->
     <node pkg="lane_follower" type="turn_detect.py" name="turn_detect_node" output="screen">
         <param name="image_topic" value="/camera/image_raw" />
+        <param name="debug_topic" value="turn_detect/image_out" />
         <param name="show_window" value="false" />
     </node>
 

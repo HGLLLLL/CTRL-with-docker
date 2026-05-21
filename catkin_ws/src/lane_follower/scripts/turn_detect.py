@@ -210,10 +210,12 @@ class TurnDetectNode:
         
         # 讀取 ROS 參數配置
         self.image_topic = rospy.get_param('~image_topic', '/usb_cam/image_raw')
+        self.debug_topic = rospy.get_param('~debug_topic', 'turn_detect/image_out')
         self.show_window = rospy.get_param('~show_window', SHOW_WINDOW)
         
         # 建立 Publisher 與 Subscriber
         self.pub = rospy.Publisher('turn_detect', TurnDetect, queue_size=10)
+        self.debug_pub = rospy.Publisher(self.debug_topic, Image, queue_size=1)
         self.sub = rospy.Subscriber(self.image_topic, Image, self.image_callback, queue_size=1, buff_size=2**24)
         
         self.tracker = Tracker()
@@ -247,10 +249,20 @@ class TurnDetectNode:
             msg_out.pixel_size = float(self.tracker.last_triangle.area)
             self.pub.publish(msg_out)
         
-        if self.show_window:
+        if self.show_window or self.debug_pub.get_num_connections() > 0:
             display = draw_overlay(frame, triangle, state, fps)
-            cv2.imshow("ROS Turn Detect", display)
-            cv2.waitKey(1)
+            
+            if self.show_window:
+                cv2.imshow("ROS Turn Detect", display)
+                cv2.waitKey(1)
+                
+            if self.debug_pub.get_num_connections() > 0:
+                try:
+                    out_msg = self.bridge.cv2_to_imgmsg(display, "bgr8")
+                    out_msg.header = msg.header
+                    self.debug_pub.publish(out_msg)
+                except CvBridgeError as e:
+                    rospy.logerr(f"CV Bridge Error on publish: {e}")
 
     def run(self):
         rospy.spin()
