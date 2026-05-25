@@ -86,6 +86,9 @@ class LaneControllerFuzzy:
         self.hard_turn_angular_2 = rospy.get_param('~hard_turn_angular_2', 2.0)
         self.hard_turn_duration_2 = rospy.get_param('~hard_turn_duration_2', 1.0)
         
+        # Cooldown after a hard turn to ignore signs and resume lane following
+        self.hard_turn_cooldown = rospy.get_param('~hard_turn_cooldown', 2.0)
+        
         # Sign alignment parameters
         self.sign_offset_threshold = rospy.get_param('~sign_offset_threshold', 50.0)
         self.sign_align_angular = rospy.get_param('~sign_align_angular', 0.5)
@@ -93,6 +96,7 @@ class LaneControllerFuzzy:
         # Turn state
         self.hard_turn_count = 0  # 紀錄大轉彎次數
         self.hard_turn_end_time = 0.0
+        self.ignore_sign_end_time = 0.0
         self.active_hard_turn_dir = None
         self.active_hard_turn_angular = 0.0
         self.last_sign_time = 0.0
@@ -138,8 +142,8 @@ class LaneControllerFuzzy:
     def turn_callback(self, msg):
         now = rospy.Time.now().to_sec()
         
-        # 如果目前正在大轉彎，先忽略新的標誌避免重複觸發
-        if now < self.hard_turn_end_time:
+        # 如果目前正在大轉彎或是處於轉彎後的冷卻期，先忽略新的標誌避免重複觸發或影響循線
+        if now < self.ignore_sign_end_time:
             return
             
         if msg.turn_direction in ['left', 'right']:
@@ -165,6 +169,7 @@ class LaneControllerFuzzy:
             if msg.pixel_size >= current_pixel_threshold:
                 self.active_hard_turn_dir = msg.turn_direction
                 self.hard_turn_end_time = now + current_hard_turn_duration
+                self.ignore_sign_end_time = self.hard_turn_end_time + self.hard_turn_cooldown
                 self.active_hard_turn_angular = current_hard_turn_angular
                 self.approaching_sign = False
                 self.aligning_sign = False
@@ -203,7 +208,7 @@ class LaneControllerFuzzy:
             return
             
         # 若超過 0.5 秒沒看到標誌，解除靠近狀態
-        if self.approaching_sign and (now - self.last_sign_time > 1):
+        if self.approaching_sign and (now - self.last_sign_time > 0.5):
             self.approaching_sign = False
             # 如果在校正過程中丟失標誌，則進入反轉找標狀態
             if self.aligning_sign:
@@ -212,14 +217,14 @@ class LaneControllerFuzzy:
                 
         # 第二優先級：校正過程中丟失路標，自主反轉找路標
         if self.is_reversing:
-            twist.linear.x = self.base_speed
+            twist.linear.x = self.base_speed-0.2
             twist.angular.z = self.reverse_angular_z
             self.cmd_pub.publish(twist)
             return
 
         # 第三優先級：看見路標時，根據 offset 進行對齊校正，或小於 threshold 則直走
         if self.approaching_sign:
-            twist.linear.x = self.base_speed
+            twist.linear.x = self.base_speed-0.2
             if self.aligning_sign:
                 twist.angular.z = self.align_angular_z
             else:

@@ -49,6 +49,7 @@
         <param name="hard_turn_angular_2" value="2.0" />        
         <param name="hard_turn_duration_2" value="1.0" />    
         
+        <param name="hard_turn_cooldown" value="2.0" />
         <param name="sign_offset_threshold" value="50.0" />
         <param name="sign_align_angular" value="0.2" />
     </node>
