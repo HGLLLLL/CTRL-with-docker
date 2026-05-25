@@ -196,8 +196,10 @@ def draw_overlay(frame: np.ndarray, triangle: Optional[Triangle], state: str, fp
         
         cv2.circle(display, triangle.apex, 5, (0, 0, 255), -1)
         
+        offset = triangle.center[0] - frame.shape[1] / 2.0
         info = f"Area: {triangle.area:.0f} Dir: {triangle.direction}"
-        cv2.putText(display, info, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
+        cv2.putText(display, info, (x, y - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
+        cv2.putText(display, f"Offset: {offset:.1f}", (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
         
     return display
 
