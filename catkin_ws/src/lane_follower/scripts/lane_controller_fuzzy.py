@@ -93,6 +93,7 @@ class LaneControllerFuzzy:
         self.sign_detect_pixel_threshold = rospy.get_param('~sign_detect_pixel_threshold', 5000.0)
         self.sign_offset_threshold = rospy.get_param('~sign_offset_threshold', 50.0)
         self.sign_align_angular = rospy.get_param('~sign_align_angular', 0.5)
+        self.scan_angular_z = rospy.get_param('~scan_angular_z', 0.5)
         
         # Turn state
         self.hard_turn_count = 0  # 紀錄大轉彎次數
@@ -104,8 +105,8 @@ class LaneControllerFuzzy:
         self.approaching_sign = False
         self.aligning_sign = False
         self.align_angular_z = 0.0
-        self.is_reversing = False
-        self.reverse_angular_z = 0.0
+        self.is_scanning = False
+        self.scan_start_time = 0.0
         
         # Initialize Fuzzy Controller
         self.fuzzy_controller = FuzzyLogicController()
@@ -156,8 +157,8 @@ class LaneControllerFuzzy:
             self.approaching_sign = True
             
             # 若找到了路標，關閉反轉找標的狀態
-            if self.is_reversing:
-                self.is_reversing = False
+            if self.is_scanning:
+                self.is_scanning = False
             
             # 決定當前要使用的轉彎參數
             if self.hard_turn_count == 0:
@@ -189,10 +190,8 @@ class LaneControllerFuzzy:
                 # 若標誌在右側 (offset > 0)，車子往右偏 (-sign_align_angular) 進行校正
                 if msg.offset > 0:
                     self.align_angular_z = -self.sign_align_angular
-                    self.reverse_angular_z = self.sign_align_angular
                 else:
                     self.align_angular_z = self.sign_align_angular
-                    self.reverse_angular_z = -self.sign_align_angular
             else:
                 self.aligning_sign = False
 
@@ -212,18 +211,26 @@ class LaneControllerFuzzy:
             self.cmd_pub.publish(twist)
             return
             
-        # 若超過 0.5 秒沒看到標誌，解除靠近狀態
-        if self.approaching_sign and (now - self.last_sign_time > 0.5):
+        # 若超過 0.5 秒沒看到標誌，解除靠近狀態並進入尋找路標狀態
+        if self.approaching_sign and (now - self.last_sign_time > 0.3):
             self.approaching_sign = False
-            # 如果在校正過程中丟失標誌，則進入反轉找標狀態
-            if self.aligning_sign:
-                self.is_reversing = True
-                self.aligning_sign = False
+            self.aligning_sign = False
+            self.is_scanning = True
+            self.scan_start_time = now
                 
-        # 第二優先級：校正過程中丟失路標，自主反轉找路標
-        if self.is_reversing:
-            twist.linear.x = self.base_speed-0.2
-            twist.angular.z = self.reverse_angular_z
+        # 第二優先級：原本有看到路標但卻丟失，停止向前，左右小幅掃描找尋
+        if self.is_scanning:
+            twist.linear.x = 0.0
+            
+            # 使用週期性切換的方式來左右轉找尋 (左轉1秒 -> 右轉2秒 -> 左轉1秒 -> 不斷循環)
+            cycle = (now - self.scan_start_time) % 4.0
+            if cycle < 1.0:
+                twist.angular.z = self.scan_angular_z
+            elif cycle < 3.0:
+                twist.angular.z = -self.scan_angular_z
+            else:
+                twist.angular.z = self.scan_angular_z
+                
             self.cmd_pub.publish(twist)
             return
 

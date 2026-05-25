@@ -42,7 +42,7 @@
         <!-- 第一次大轉彎參數 -->
         <param name="turn_pixel_threshold_1" value="20000.0" />
         <param name="hard_turn_angular_1" value="1.8" />        
-        <param name="hard_turn_duration_1" value="0.6" />    
+        <param name="hard_turn_duration_1" value="0.9" />    
         
         <!-- 第二次大轉彎參數 -->
         <param name="turn_pixel_threshold_2" value="20000.0" />
@@ -50,7 +50,7 @@
         <param name="hard_turn_duration_2" value="1.2" />  
 
         <param name="hard_turn_cooldown" value="1" />     
-        <param name="sign_detect_pixel_threshold" value="12000.0" />   
+        <param name="sign_detect_pixel_threshold" value="13000.0" />   
         <param name="sign_offset_threshold" value="50.0" />
         <param name="sign_align_angular" value="0.2" />
     </node>
