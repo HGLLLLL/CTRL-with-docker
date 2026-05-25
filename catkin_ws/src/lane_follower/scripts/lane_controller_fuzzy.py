@@ -90,6 +90,7 @@ class LaneControllerFuzzy:
         self.hard_turn_cooldown = rospy.get_param('~hard_turn_cooldown', 2.0)
         
         # Sign alignment parameters
+        self.sign_detect_pixel_threshold = rospy.get_param('~sign_detect_pixel_threshold', 5000.0)
         self.sign_offset_threshold = rospy.get_param('~sign_offset_threshold', 50.0)
         self.sign_align_angular = rospy.get_param('~sign_align_angular', 0.5)
         
@@ -147,6 +148,10 @@ class LaneControllerFuzzy:
             return
             
         if msg.turn_direction in ['left', 'right']:
+            # 如果路標太小，視為還沒真正到達需要考慮路標的距離，直接忽略讓系統維持正常循線
+            if msg.pixel_size < self.sign_detect_pixel_threshold:
+                return
+
             self.last_sign_time = now
             self.approaching_sign = True
             
