@@ -1,2 +1,3 @@
 string turn_direction
 float32 pixel_size
+float32 offset

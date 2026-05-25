@@ -75,15 +75,32 @@ class LaneControllerFuzzy:
         # Read parameters
         self.base_speed = rospy.get_param('~base_speed', 0.5)
         self.max_angular = rospy.get_param('~max_angular', 1.0) # Max angular velocity is +/- 1.0 rad/s
-        self.turn_pixel_threshold = rospy.get_param('~turn_pixel_threshold', 1000.0)
-        self.hard_turn_angular = rospy.get_param('~hard_turn_angular', 2.0)
-        self.hard_turn_duration = rospy.get_param('~hard_turn_duration', 1.0)
+        
+        # Params for Turn 1
+        self.turn_pixel_threshold_1 = rospy.get_param('~turn_pixel_threshold_1', 1000.0)
+        self.hard_turn_angular_1 = rospy.get_param('~hard_turn_angular_1', 2.0)
+        self.hard_turn_duration_1 = rospy.get_param('~hard_turn_duration_1', 1.0)
+        
+        # Params for Turn 2
+        self.turn_pixel_threshold_2 = rospy.get_param('~turn_pixel_threshold_2', 1000.0)
+        self.hard_turn_angular_2 = rospy.get_param('~hard_turn_angular_2', 2.0)
+        self.hard_turn_duration_2 = rospy.get_param('~hard_turn_duration_2', 1.0)
+        
+        # Sign alignment parameters
+        self.sign_offset_threshold = rospy.get_param('~sign_offset_threshold', 50.0)
+        self.sign_align_angular = rospy.get_param('~sign_align_angular', 0.5)
         
         # Turn state
+        self.hard_turn_count = 0  # 紀錄大轉彎次數
         self.hard_turn_end_time = 0.0
         self.active_hard_turn_dir = None
+        self.active_hard_turn_angular = 0.0
         self.last_sign_time = 0.0
         self.approaching_sign = False
+        self.aligning_sign = False
+        self.align_angular_z = 0.0
+        self.is_reversing = False
+        self.reverse_angular_z = 0.0
         
         # Initialize Fuzzy Controller
         self.fuzzy_controller = FuzzyLogicController()
@@ -129,13 +146,45 @@ class LaneControllerFuzzy:
             self.last_sign_time = now
             self.approaching_sign = True
             
+            # 若找到了路標，關閉反轉找標的狀態
+            if self.is_reversing:
+                self.is_reversing = False
+            
+            # 決定當前要使用的轉彎參數
+            if self.hard_turn_count == 0:
+                current_pixel_threshold = self.turn_pixel_threshold_1
+                current_hard_turn_angular = self.hard_turn_angular_1
+                current_hard_turn_duration = self.hard_turn_duration_1
+            else:
+                # 第二次以後直接使用 Turn 2 的參數
+                current_pixel_threshold = self.turn_pixel_threshold_2
+                current_hard_turn_angular = self.hard_turn_angular_2
+                current_hard_turn_duration = self.hard_turn_duration_2
+
             # 當標誌大於門檻，觸發大轉彎
-            if msg.pixel_size >= self.turn_pixel_threshold:
+            if msg.pixel_size >= current_pixel_threshold:
                 self.active_hard_turn_dir = msg.turn_direction
-                self.hard_turn_end_time = now + self.hard_turn_duration
+                self.hard_turn_end_time = now + current_hard_turn_duration
+                self.active_hard_turn_angular = current_hard_turn_angular
                 self.approaching_sign = False
-                rospy.loginfo("Executing hard turn %s for %.2fs", 
-                              msg.turn_direction, self.hard_turn_duration)
+                self.aligning_sign = False
+                self.hard_turn_count += 1
+                rospy.loginfo("Executing hard turn #%d (%s) for %.2fs", 
+                              self.hard_turn_count, msg.turn_direction, current_hard_turn_duration)
+                return
+                
+            # 根據 offset 決定是否需要左右轉校正
+            if abs(msg.offset) >= self.sign_offset_threshold:
+                self.aligning_sign = True
+                # 若標誌在右側 (offset > 0)，車子往右偏 (-sign_align_angular) 進行校正
+                if msg.offset > 0:
+                    self.align_angular_z = -self.sign_align_angular
+                    self.reverse_angular_z = self.sign_align_angular
+                else:
+                    self.align_angular_z = self.sign_align_angular
+                    self.reverse_angular_z = -self.sign_align_angular
+            else:
+                self.aligning_sign = False
 
     def lane_callback(self, msg):
         now = rospy.Time.now().to_sec()
@@ -149,22 +198,36 @@ class LaneControllerFuzzy:
         # 第一優先級：目前正在大轉彎
         if now < self.hard_turn_end_time:
             twist.linear.x = self.base_speed
-            twist.angular.z = self.hard_turn_angular if self.active_hard_turn_dir == 'left' else -self.hard_turn_angular
+            twist.angular.z = self.active_hard_turn_angular if self.active_hard_turn_dir == 'left' else -self.active_hard_turn_angular
             self.cmd_pub.publish(twist)
             return
             
         # 若超過 0.5 秒沒看到標誌，解除靠近狀態
-        if self.approaching_sign and (now - self.last_sign_time > 0.5):
+        if self.approaching_sign and (now - self.last_sign_time > 1):
             self.approaching_sign = False
-            
-        # 第二優先級：看到了轉彎標誌，但尚未到達門檻 (關閉循線控制，維持直線)
+            # 如果在校正過程中丟失標誌，則進入反轉找標狀態
+            if self.aligning_sign:
+                self.is_reversing = True
+                self.aligning_sign = False
+                
+        # 第二優先級：校正過程中丟失路標，自主反轉找路標
+        if self.is_reversing:
+            twist.linear.x = self.base_speed
+            twist.angular.z = self.reverse_angular_z
+            self.cmd_pub.publish(twist)
+            return
+
+        # 第三優先級：看見路標時，根據 offset 進行對齊校正，或小於 threshold 則直走
         if self.approaching_sign:
             twist.linear.x = self.base_speed
-            twist.angular.z = 0.0
+            if self.aligning_sign:
+                twist.angular.z = self.align_angular_z
+            else:
+                twist.angular.z = 0.0
             self.cmd_pub.publish(twist)
             return
         
-        # 第三優先級：正常的模糊循線控制
+        # 第四優先級：正常的模糊循線控制 (沒有路標時的日常循線)
         offset = msg.offset
         angle = msg.angle
         

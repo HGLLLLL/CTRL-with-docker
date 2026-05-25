@@ -38,8 +38,18 @@
     <node pkg="lane_follower" type="lane_controller_fuzzy.py" name="lane_controller_fuzzy" output="screen">
         <param name="base_speed" value="0.5" />
         <param name="max_angular" value="1.6" />
-        <param name="turn_pixel_threshold" value="20000.0" />
-        <param name="hard_turn_angular" value="2.0" />        
-        <param name="hard_turn_duration" value="1.0" />    
+        
+        <!-- 第一次大轉彎參數 -->
+        <param name="turn_pixel_threshold_1" value="20000.0" />
+        <param name="hard_turn_angular_1" value="2.0" />        
+        <param name="hard_turn_duration_1" value="1.0" />    
+        
+        <!-- 第二次大轉彎參數 -->
+        <param name="turn_pixel_threshold_2" value="20000.0" />
+        <param name="hard_turn_angular_2" value="2.0" />        
+        <param name="hard_turn_duration_2" value="1.0" />    
+        
+        <param name="sign_offset_threshold" value="50.0" />
+        <param name="sign_align_angular" value="0.2" />
     </node>
 </launch>

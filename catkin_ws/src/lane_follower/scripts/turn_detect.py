@@ -22,6 +22,7 @@ except ImportError:
     class TurnDetect:
         turn_direction = ""
         pixel_size = 0.0
+        offset = 0.0
 
 # ==========================================
 # Configuration / Settings (從原 config.py 整合)
@@ -247,6 +248,7 @@ class TurnDetectNode:
             msg_out = TurnDetect()
             msg_out.turn_direction = self.tracker.last_triangle.direction
             msg_out.pixel_size = float(self.tracker.last_triangle.area)
+            msg_out.offset = float(self.tracker.last_triangle.center[0] - frame.shape[1] / 2.0)
             self.pub.publish(msg_out)
         
         if self.show_window or self.debug_pub.get_num_connections() > 0:
