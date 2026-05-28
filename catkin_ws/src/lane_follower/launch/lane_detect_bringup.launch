@@ -25,6 +25,14 @@
         <param name="lane_width_history_len" value="30" />
         <param name="enable_yaw_b" value="true" />
         <param name="max_predict_frames" value="15" />
+
+        <!-- Binarization & Morphological Parameters -->
+        <param name="use_otsu_fallback" value="true" />
+        <param name="adaptive_block_size" value="25" />
+        <param name="adaptive_c" value="10" />
+        <param name="blur_kernel" value="5" />
+        <param name="morph_open_kernel" value="3" />
+        <param name="morph_close_kernel" value="9" />
     </node>
 
     <!-- 轉彎辨識節點 -->

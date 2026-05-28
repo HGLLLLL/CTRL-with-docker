@@ -1338,6 +1338,14 @@ class LaneDetectNode:
         cfg_kwargs['LANE_WIDTH_HISTORY_LEN'] = int(rospy.get_param('~lane_width_history_len', default_cfg.LANE_WIDTH_HISTORY_LEN))
         cfg_kwargs['ENABLE_YAW_B'] = rospy.get_param('~enable_yaw_b', default_cfg.ENABLE_YAW_B)
         cfg_kwargs['MAX_PREDICT_FRAMES'] = int(rospy.get_param('~max_predict_frames', default_cfg.MAX_PREDICT_FRAMES))
+
+        # Binarization & Morphological Parameters
+        cfg_kwargs['USE_OTSU_FALLBACK'] = rospy.get_param('~use_otsu_fallback', default_cfg.USE_OTSU_FALLBACK)
+        cfg_kwargs['ADAPTIVE_BLOCK_SIZE'] = int(rospy.get_param('~adaptive_block_size', default_cfg.ADAPTIVE_BLOCK_SIZE))
+        cfg_kwargs['ADAPTIVE_C'] = int(rospy.get_param('~adaptive_c', default_cfg.ADAPTIVE_C))
+        cfg_kwargs['BLUR_KERNEL'] = int(rospy.get_param('~blur_kernel', default_cfg.BLUR_KERNEL))
+        cfg_kwargs['MORPH_OPEN_KERNEL'] = int(rospy.get_param('~morph_open_kernel', default_cfg.MORPH_OPEN_KERNEL))
+        cfg_kwargs['MORPH_CLOSE_KERNEL'] = int(rospy.get_param('~morph_close_kernel', default_cfg.MORPH_CLOSE_KERNEL))
         
         self.cfg = Config(**cfg_kwargs)
         
