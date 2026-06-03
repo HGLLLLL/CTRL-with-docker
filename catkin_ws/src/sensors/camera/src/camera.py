@@ -11,14 +11,25 @@ class Camera:
   def __init__(self):
     rospy.init_node('camera')
     
-    self.camera_id = rospy.get_param('~camera_id', '/dev/video0')
+    self.camera_id_param = rospy.get_param('~camera_id', '/dev/video0')
     self.camera_name = rospy.get_param('~camera_name', 'camera')
-    self.cap = cv2.VideoCapture(self.camera_id)
+    
+    # Try to parse the camera_id as an integer backend for OpenCV, to avoid GStreamer errors
+    if isinstance(self.camera_id_param, str) and self.camera_id_param.startswith('/dev/video'):
+        self.camera_id = int(self.camera_id_param.replace('/dev/video', ''))
+    else:
+        try:
+            self.camera_id = int(self.camera_id_param)
+        except ValueError:
+            self.camera_id = self.camera_id_param
+
+    # Explicitly using V4L2 backend
+    self.cap = cv2.VideoCapture(self.camera_id, cv2.CAP_V4L2)
 
     if self.cap.isOpened():
-      rospy.loginfo('Camera connected: %s', self.camera_id)
+      rospy.loginfo('Camera connected: %s (OpenCV ID: %s)', self.camera_id_param, self.camera_id)
     else :
-      rospy.logwarn('Camera not connected: %s', self.camera_id)
+      rospy.logwarn('Camera not connected: %s', self.camera_id_param)
 
     # Standard ROS image publisher
     self.image_pub = rospy.Publisher('/' + self.camera_name + '/image_raw', Image, queue_size=1)
