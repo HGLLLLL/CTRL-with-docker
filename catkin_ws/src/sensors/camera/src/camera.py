@@ -26,6 +26,11 @@ class Camera:
     # Explicitly using V4L2 backend
     self.cap = cv2.VideoCapture(self.camera_id, cv2.CAP_V4L2)
 
+    # 強制降低解析度並使用 MJPG 壓縮格式節省 USB 頻寬
+    self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+    self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
     if self.cap.isOpened():
       rospy.loginfo('Camera connected: %s (OpenCV ID: %s)', self.camera_id_param, self.camera_id)
     else :
