@@ -12,6 +12,7 @@ class Camera:
     rospy.init_node('camera')
     
     self.camera_id = rospy.get_param('~camera_id', '/dev/video0')
+    self.camera_name = rospy.get_param('~camera_name', 'camera')
     self.cap = cv2.VideoCapture(self.camera_id)
 
     if self.cap.isOpened():
@@ -20,9 +21,9 @@ class Camera:
       rospy.logwarn('Camera not connected: %s', self.camera_id)
 
     # Standard ROS image publisher
-    self.image_pub = rospy.Publisher('/camera/image_raw', Image, queue_size=1)
+    self.image_pub = rospy.Publisher('/' + self.camera_name + '/image_raw', Image, queue_size=1)
     # Existing web publish
-    self.web_pub = rospy.Publisher('/golfbot/camera_web', String, queue_size=1)
+    self.web_pub = rospy.Publisher('/golfbot/' + self.camera_name + '_web', String, queue_size=1)
     
     self.bridge = CvBridge()
     self.rate = rospy.Rate(30)

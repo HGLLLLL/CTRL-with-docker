@@ -1,7 +1,15 @@
 <launch>
 
-    <node pkg="camera" type="camera.py" name="camera_node" output="screen">
+    <arg name="use_two_cameras" default="true" />
+
+    <node name="camera1" pkg="camera" type="camera.py" output="screen">
         <param name="camera_id" value="/dev/video0" />
+        <param name="camera_name" value="camera" />
+    </node>
+    
+    <node name="camera2" pkg="camera" type="camera.py" output="screen" if="$(arg use_two_cameras)">
+        <param name="camera_id" value="/dev/video2" />
+        <param name="camera_name" value="camera2" />
     </node>
 
     <!-- 車道辨識節點 -->
@@ -22,7 +30,7 @@
     </node>
 
     <node pkg="lane_follower" type="turn_detect.py" name="turn_detect_node" output="screen">
-        <param name="image_topic" value="/camera/image_raw" />
+        <param name="image_topic" value="/camera2/image_raw" />
         <param name="debug_topic" value="turn_detect/image_out" />
         <param name="show_window" value="false" />
     </node>

@@ -1,3 +1,13 @@
 <launch>
-  <node name="camera" pkg="camera" type="camera.py" output="screen" />
+  <arg name="use_two_cameras" default="true" />
+
+  <node name="camera1" pkg="camera" type="camera.py" output="screen">
+    <param name="camera_id" value="/dev/video0" />
+    <param name="camera_name" value="camera" />
+  </node>
+  
+  <node name="camera2" pkg="camera" type="camera.py" output="screen" if="$(arg use_two_cameras)">
+    <param name="camera_id" value="/dev/video2" />
+    <param name="camera_name" value="camera2" />
+  </node>
 </launch>
