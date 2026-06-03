@@ -1,13 +1,29 @@
 <launch>
   <arg name="use_two_cameras" default="true" />
+  
+  <!-- Camera 1 args -->
+  <arg name="cam1_fps" default="30" />
+  <arg name="cam1_width" default="640" />
+  <arg name="cam1_height" default="480" />
+
+  <!-- Camera 2 args -->
+  <arg name="cam2_fps" default="30" />
+  <arg name="cam2_width" default="640" />
+  <arg name="cam2_height" default="480" />
 
   <node name="camera1" pkg="camera" type="camera.py" output="screen">
     <param name="camera_id" value="/dev/video0" />
     <param name="camera_name" value="camera" />
+    <param name="frame_rate" value="$(arg cam1_fps)" />
+    <param name="width" value="$(arg cam1_width)" />
+    <param name="height" value="$(arg cam1_height)" />
   </node>
   
   <node name="camera2" pkg="camera" type="camera.py" output="screen" if="$(arg use_two_cameras)">
     <param name="camera_id" value="/dev/video2" />
     <param name="camera_name" value="camera2" />
+    <param name="frame_rate" value="$(arg cam2_fps)" />
+    <param name="width" value="$(arg cam2_width)" />
+    <param name="height" value="$(arg cam2_height)" />
   </node>
 </launch>

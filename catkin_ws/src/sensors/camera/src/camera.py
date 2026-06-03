@@ -13,6 +13,9 @@ class Camera:
     
     self.camera_id_param = rospy.get_param('~camera_id', '/dev/video0')
     self.camera_name = rospy.get_param('~camera_name', 'camera')
+    self.frame_rate = rospy.get_param('~frame_rate', 30)
+    self.width = rospy.get_param('~width', 640)
+    self.height = rospy.get_param('~height', 480)
     
     # Try to parse the camera_id as an integer backend for OpenCV, to avoid GStreamer errors
     if isinstance(self.camera_id_param, str) and self.camera_id_param.startswith('/dev/video'):
@@ -28,8 +31,9 @@ class Camera:
 
     # 強制降低解析度並使用 MJPG 壓縮格式節省 USB 頻寬
     self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-    self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-    self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+    self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+    self.cap.set(cv2.CAP_PROP_FPS, self.frame_rate)
 
     if self.cap.isOpened():
       rospy.loginfo('Camera connected: %s (OpenCV ID: %s)', self.camera_id_param, self.camera_id)
@@ -42,7 +46,7 @@ class Camera:
     self.web_pub = rospy.Publisher('/golfbot/' + self.camera_name + '_web', String, queue_size=1)
     
     self.bridge = CvBridge()
-    self.rate = rospy.Rate(30)
+    self.rate = rospy.Rate(self.frame_rate)
 
   def talker(self):
     while not rospy.is_shutdown():
