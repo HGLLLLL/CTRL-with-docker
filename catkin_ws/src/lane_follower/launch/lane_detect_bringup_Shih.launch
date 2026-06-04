@@ -61,5 +61,10 @@
         <param name="sign_detect_pixel_threshold" value="500.0" />
         <param name="sign_offset_threshold" value="50.0" />
         <param name="sign_align_angular" value="0.2" />
+
+        <!-- 第一次大轉彎後 X 秒的排程同向硬轉 -->
+        <param name="scheduled_turn_delay" value="3.0" />
+        <param name="scheduled_turn_angular" value="2.0" />
+        <param name="scheduled_turn_duration" value="1.0" />
     </node>
 </launch>

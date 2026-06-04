@@ -88,6 +88,12 @@ class LaneControllerFuzzy:
         
         # Cooldown after a hard turn to ignore signs and resume lane following
         self.hard_turn_cooldown = rospy.get_param('~hard_turn_cooldown', 2.0)
+
+        # Params for the scheduled turn triggered X seconds after the first hard turn
+        # 第一次大轉彎完成後，經過 scheduled_turn_delay 秒，再執行一次同方向的硬轉
+        self.scheduled_turn_delay = rospy.get_param('~scheduled_turn_delay', 3.0)
+        self.scheduled_turn_angular = rospy.get_param('~scheduled_turn_angular', 2.0)
+        self.scheduled_turn_duration = rospy.get_param('~scheduled_turn_duration', 1.0)
         
         # Sign alignment parameters
         self.sign_detect_pixel_threshold = rospy.get_param('~sign_detect_pixel_threshold', 5000.0)
@@ -107,6 +113,11 @@ class LaneControllerFuzzy:
         self.align_angular_z = 0.0
         self.is_scanning = False
         self.scan_start_time = 0.0
+
+        # Scheduled-turn state (armed after the first hard turn)
+        self.scheduled_turn_pending = False
+        self.scheduled_turn_trigger_time = 0.0
+        self.scheduled_turn_dir = None
         
         # Initialize Fuzzy Controller
         self.fuzzy_controller = FuzzyLogicController()
@@ -180,8 +191,16 @@ class LaneControllerFuzzy:
                 self.approaching_sign = False
                 self.aligning_sign = False
                 self.hard_turn_count += 1
-                rospy.loginfo("Executing hard turn #%d (%s) for %.2fs", 
+                rospy.loginfo("Executing hard turn #%d (%s) for %.2fs",
                               self.hard_turn_count, msg.turn_direction, current_hard_turn_duration)
+
+                # 第一次大轉彎後，排程 scheduled_turn_delay 秒後再執行一次同方向硬轉
+                if self.hard_turn_count == 1:
+                    self.scheduled_turn_pending = True
+                    self.scheduled_turn_dir = msg.turn_direction
+                    self.scheduled_turn_trigger_time = self.hard_turn_end_time + self.scheduled_turn_delay
+                    rospy.loginfo("Scheduled follow-up %s turn in %.2fs after first hard turn ends",
+                                  self.scheduled_turn_dir, self.scheduled_turn_delay)
                 return
                 
             # 根據 offset 決定是否需要左右轉校正
@@ -210,7 +229,25 @@ class LaneControllerFuzzy:
             twist.angular.z = self.active_hard_turn_angular if self.active_hard_turn_dir == 'left' else -self.active_hard_turn_angular
             self.cmd_pub.publish(twist)
             return
-            
+
+        # 第一優先級 (排程)：第一次大轉彎後 X 秒，無視循線/路標，再執行一次同方向硬轉
+        if self.scheduled_turn_pending and now >= self.scheduled_turn_trigger_time:
+            self.active_hard_turn_dir = self.scheduled_turn_dir
+            self.active_hard_turn_angular = self.scheduled_turn_angular
+            self.hard_turn_end_time = now + self.scheduled_turn_duration
+            self.ignore_sign_end_time = self.hard_turn_end_time + self.hard_turn_cooldown
+            self.scheduled_turn_pending = False
+            # 清掉其他可能干擾的狀態，硬轉完直接回到循線
+            self.approaching_sign = False
+            self.aligning_sign = False
+            self.is_scanning = False
+            rospy.loginfo("Executing scheduled follow-up hard turn (%s) for %.2fs",
+                          self.active_hard_turn_dir, self.scheduled_turn_duration)
+            twist.linear.x = self.base_speed
+            twist.angular.z = self.active_hard_turn_angular if self.active_hard_turn_dir == 'left' else -self.active_hard_turn_angular
+            self.cmd_pub.publish(twist)
+            return
+
         # 若超過 0.5 秒沒看到標誌，解除靠近狀態並進入尋找路標狀態
         if self.approaching_sign and (now - self.last_sign_time > 0.3):
             self.approaching_sign = False
