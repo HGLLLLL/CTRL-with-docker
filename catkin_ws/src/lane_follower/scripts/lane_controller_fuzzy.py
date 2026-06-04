@@ -4,6 +4,7 @@
 import rospy
 from geometry_msgs.msg import Twist
 import sys
+import time
 
 try:
     from lane_follower.msg import LaneData, TurnDetect
@@ -145,12 +146,16 @@ class LaneControllerFuzzy:
         twist.angular.y = 0.0
         twist.angular.z = 0.0
         # 大量發送停機指令，確保信號送到 Arduino
-        for _ in range(10):
+        # 注意：shutdown 期間 rospy.sleep() 會立即拋出 ROSInterruptException，
+        # 整個迴圈會在不到 1 ms 內跑完，rosserial 可能還沒把訊息送出去就關掉串列埠，
+        # 導致車子停不下來。改用 time.sleep() 確保 publish 之間有真實間隔，
+        # 讓 rosserial 有充分時間把至少一筆停車訊息送到 Arduino。
+        for _ in range(20):
             try:
                 self.cmd_pub.publish(twist)
-                rospy.sleep(0.05)
             except Exception:
                 pass
+            time.sleep(0.05)
 
     def turn_callback(self, msg):
         now = rospy.Time.now().to_sec()
