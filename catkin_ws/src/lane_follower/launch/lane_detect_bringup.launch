@@ -6,8 +6,32 @@
     </node>
 
     <!-- 統一的攝影機影像發布節點 -->
-    <node pkg="camera" type="camera.py" name="camera_node" output="screen">
+    <arg name="use_two_cameras" default="true" />
+    
+    <!-- Camera 1 args -->
+    <arg name="cam1_fps" default="30" />
+    <arg name="cam1_width" default="640" />
+    <arg name="cam1_height" default="480" />
+
+    <!-- Camera 2 args -->
+    <arg name="cam2_fps" default="30" />
+    <arg name="cam2_width" default="640" />
+    <arg name="cam2_height" default="480" />
+
+    <node name="camera1" pkg="camera" type="camera.py" output="screen">
         <param name="camera_id" value="/dev/video0" />
+        <param name="camera_name" value="camera" />
+        <param name="frame_rate" value="$(arg cam1_fps)" />
+        <param name="width" value="$(arg cam1_width)" />
+        <param name="height" value="$(arg cam1_height)" />
+    </node>
+    
+    <node name="camera2" pkg="camera" type="camera.py" output="screen" if="$(arg use_two_cameras)">
+        <param name="camera_id" value="/dev/video2" />
+        <param name="camera_name" value="camera2" />
+        <param name="frame_rate" value="$(arg cam2_fps)" />
+        <param name="width" value="$(arg cam2_width)" />
+        <param name="height" value="$(arg cam2_height)" />
     </node>
 
     <!-- 車道辨識節點 -->
@@ -37,15 +61,15 @@
 
     <!-- 轉彎辨識節點 -->
     <node pkg="lane_follower" type="turn_detect.py" name="turn_detect_node" output="screen">
-        <param name="image_topic" value="/camera/image_raw" />
+        <param name="image_topic" value="/camera2/image_raw" />
         <param name="debug_topic" value="turn_detect/image_out" />
         <param name="show_window" value="false" />
     </node>
 
     <!-- 模糊控制節點 -->
     <node pkg="lane_follower" type="lane_controller_fuzzy.py" name="lane_controller_fuzzy" output="screen">
-        <param name="base_speed" value="0.5" />
-        <param name="max_angular" value="1.4" />
+        <param name="base_speed" value="0.3" />
+        <param name="max_angular" value="1.2" />
         
         <!-- 第一次大轉彎參數 -->
         <param name="turn_pixel_threshold_1" value="20000.0" />
@@ -63,7 +87,7 @@
         <param name="sign_align_angular" value="0.2" />
 
         <!-- 第一次大轉彎後 X 秒的排程同向硬轉 -->
-        <param name="scheduled_turn_delay" value="3.0" />
+        <param name="scheduled_turn_delay" value="5.3" />
         <param name="scheduled_turn_angular" value="1.8" />
         <param name="scheduled_turn_duration" value="0.9" />
     </node>

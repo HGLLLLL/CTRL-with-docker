@@ -1,8 +1,0 @@
-<launch>
-  <!-- Plate -->
-  <include file="$(find dlv_plate_ctrl)/launch/four_wheeled_motor.launch" />
-  
-  <!-- line follower -->
-  <include file="$(find line_follower)/launch/line_detect.launch" />
-
-</launch>
