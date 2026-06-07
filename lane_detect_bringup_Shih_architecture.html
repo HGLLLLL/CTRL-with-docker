@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>lane_detect_bringup_Shih · Node 架構</title>
+<style>
+  :root{
+    --bg:#f5f5f7;
+    --card:#ffffff;
+    --ink:#1d1d1f;
+    --ink-soft:#6e6e73;
+    --line:#d2d2d7;
+    --blue:#0071e3;
+    --blue-soft:#eaf2fe;
+    --blue-ink:#0a3a6b;
+    --shadow:0 4px 24px rgba(0,0,0,.06);
+    --shadow-lg:0 12px 48px rgba(0,0,0,.10);
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue","PingFang TC","Microsoft JhengHei",Helvetica,Arial,sans-serif;
+    line-height:1.5;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px;}
+
+  /* ---------- hero ---------- */
+  header.hero{
+    text-align:center;
+    padding:96px 24px 56px;
+  }
+  .eyebrow{
+    font-size:15px;font-weight:600;letter-spacing:.02em;
+    color:var(--blue);margin:0 0 14px;
+  }
+  header.hero h1{
+    font-size:clamp(34px,5vw,58px);
+    font-weight:700;letter-spacing:-.02em;margin:0;
+  }
+  header.hero p.sub{
+    font-size:clamp(17px,2.2vw,22px);
+    color:var(--ink-soft);max-width:620px;margin:18px auto 0;font-weight:400;
+  }
+  code.cmd{
+    display:inline-block;margin-top:28px;
+    background:#1d1d1f;color:#f5f5f7;
+    font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    font-size:15px;padding:12px 20px;border-radius:12px;
+    box-shadow:var(--shadow);
+  }
+
+  /* ---------- section ---------- */
+  section{padding:40px 0;}
+  .section-title{
+    font-size:13px;font-weight:600;text-transform:uppercase;
+    letter-spacing:.08em;color:var(--ink-soft);
+    margin:0 0 6px;
+  }
+  .section-head h2{
+    font-size:clamp(26px,3.4vw,38px);font-weight:700;
+    letter-spacing:-.015em;margin:0 0 36px;
+  }
+
+  /* ---------- legend ---------- */
+  .legend{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin:0 0 28px;}
+  .chip{
+    display:inline-flex;align-items:center;gap:9px;
+    background:var(--card);border:1px solid var(--line);
+    padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;
+    box-shadow:0 1px 2px rgba(0,0,0,.04);
+  }
+  .swatch{width:14px;height:14px;border-radius:5px;flex:none;}
+  .sw-node{background:var(--blue-soft);border:1.5px solid var(--blue);}
+  .sw-topic{background:#fff;border:1.5px solid var(--line);}
+  .sw-ext{background:#fafafa;border:1.5px dashed #b0b0b5;}
+  .sw-brain{background:#fff4e6;border:1.5px solid #ff9f0a;}
+
+  /* ---------- graph card ---------- */
+  .graph-card{
+    background:var(--card);border:1px solid var(--line);
+    border-radius:24px;padding:30px 20px;box-shadow:var(--shadow-lg);
+  }
+  .graph-card svg{width:100%;height:auto;display:block;}
+
+  /* ---------- grids ---------- */
+  .grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));}
+  .node-card{
+    background:var(--card);border:1px solid var(--line);
+    border-radius:20px;padding:24px;box-shadow:var(--shadow);
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .node-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);}
+  .node-card .nidx{
+    width:30px;height:30px;border-radius:9px;background:var(--blue-soft);
+    color:var(--blue);font-weight:700;font-size:14px;
+    display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;
+  }
+  .node-card.brain .nidx{background:#fff4e6;color:#ff9f0a;}
+  .node-card.ext .nidx{background:#f0f0f2;color:var(--ink-soft);}
+  .node-card h3{margin:0 0 2px;font-size:19px;font-weight:700;letter-spacing:-.01em;}
+  .node-card .pkg{
+    font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    font-size:12.5px;color:var(--ink-soft);margin:0 0 16px;
+  }
+  .io-row{display:flex;gap:8px;font-size:13.5px;margin:7px 0;align-items:baseline;}
+  .io-tag{
+    flex:none;font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px;
+    letter-spacing:.03em;
+  }
+  .io-sub{background:#fdeeee;color:#c2342f;}
+  .io-pub{background:#e8f6ee;color:#1e8a4c;}
+  .io-row code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:var(--ink);}
+  .io-row .mtype{color:var(--ink-soft);font-size:12px;}
+
+  /* ---------- topic table ---------- */
+  .tbl-card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;}
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th,td{text-align:left;padding:14px 18px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:600;background:#fafafa;}
+  tr:last-child td{border-bottom:none;}
+  td code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;}
+  .muted-row td{color:var(--ink-soft);}
+  .pill-type{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--blue-ink);background:var(--blue-soft);padding:2px 8px;border-radius:7px;white-space:nowrap;}
+
+  /* ---------- tuning ---------- */
+  .tune-card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;}
+  .tune-card .note{padding:18px 22px;background:#fff8ee;border-bottom:1px solid var(--line);font-size:14px;color:#8a5a00;}
+  .delta-up{color:#c2342f;font-weight:600;}
+  .delta-dn{color:#1e8a4c;font-weight:600;}
+
+  /* ---------- callout ---------- */
+  .callout{
+    background:var(--blue-soft);border:1px solid #cfe2fc;border-radius:18px;
+    padding:22px 26px;font-size:15px;color:var(--blue-ink);margin-top:18px;
+  }
+  .callout b{font-weight:700;}
+  .callout + .callout{margin-top:14px;}
+
+  footer{text-align:center;color:var(--ink-soft);font-size:13px;padding:50px 24px 70px;}
+  footer code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;}
+
+  @media (max-width:600px){
+    header.hero{padding:64px 20px 36px;}
+    th,td{padding:11px 12px;font-size:13px;}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <p class="eyebrow">CTRL · 自駕車車道跟隨系統</p>
+  <h1>lane_detect_bringup_Shih</h1>
+  <p class="sub">這個 launch 一次啟動的所有 ROS Node、Topic 連線與資料流向（採用預設 <code>use_two_cameras:=true</code>）。</p>
+  <code class="cmd">roslaunch lane_follower lane_detect_bringup_Shih.launch</code>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ GRAPH ============ -->
+  <section>
+    <div class="section-head">
+      <p class="section-title">Computation Graph</p>
+      <h2>整體節點架構圖</h2>
+    </div>
+
+    <div class="legend">
+      <span class="chip"><span class="swatch sw-node"></span>ROS Node</span>
+      <span class="chip"><span class="swatch sw-brain"></span>控制大腦 Controller</span>
+      <span class="chip"><span class="swatch sw-topic"></span>Topic</span>
+      <span class="chip"><span class="swatch sw-ext"></span>硬體 / 外部 MCU</span>
+    </div>
+
+    <div class="graph-card">
+      <svg viewBox="0 0 1060 1360" role="img" aria-label="lane_detect_bringup_Shih node graph">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#86868b"/>
+          </marker>
+          <style>
+            .nbox{fill:#eaf2fe;stroke:#0071e3;stroke-width:1.6;}
+            .brainbox{fill:#fff4e6;stroke:#ff9f0a;stroke-width:1.8;}
+            .ext{fill:#fafafa;stroke:#b0b0b5;stroke-width:1.5;stroke-dasharray:6 5;}
+            .topic{fill:#ffffff;stroke:#d2d2d7;stroke-width:1.4;}
+            .topic-muted{fill:#fafafa;stroke:#d2d2d7;stroke-width:1.4;stroke-dasharray:4 4;}
+            .nname{font:700 16px -apple-system,"SF Pro Display",sans-serif;fill:#0a3a6b;}
+            .nname-b{font:700 16px -apple-system,"SF Pro Display",sans-serif;fill:#8a5a00;}
+            .nname-e{font:700 15px -apple-system,sans-serif;fill:#3a3a3c;}
+            .nsub{font:500 11.5px "SF Mono",ui-monospace,Menlo,monospace;fill:#6e6e73;}
+            .tname{font:600 13.5px "SF Mono",ui-monospace,Menlo,monospace;fill:#1d1d1f;}
+            .tmuted{font:600 12px "SF Mono",ui-monospace,Menlo,monospace;fill:#86868b;}
+            .edge{stroke:#86868b;stroke-width:1.7;fill:none;}
+            .edge-muted{stroke:#c7c7cc;stroke-width:1.4;fill:none;stroke-dasharray:5 4;}
+            .elabel{font:500 11.5px -apple-system,sans-serif;fill:#86868b;}
+            .center-anchor{text-anchor:middle;}
+          </style>
+        </defs>
+
+        <!-- ===== EDGES (drawn first, under boxes) ===== -->
+        <!-- hw -> camera nodes -->
+        <line class="edge" x1="270" y1="99"  x2="270" y2="161" marker-end="url(#arrow)"/>
+        <line class="edge" x1="770" y1="99"  x2="770" y2="161" marker-end="url(#arrow)"/>
+        <!-- camera nodes -> image topics -->
+        <line class="edge" x1="270" y1="237" x2="270" y2="304" marker-end="url(#arrow)"/>
+        <line class="edge" x1="770" y1="237" x2="770" y2="304" marker-end="url(#arrow)"/>
+        <text class="elabel" x="282" y="278">sensor_msgs/Image</text>
+        <text class="elabel" x="782" y="278">sensor_msgs/Image</text>
+        <!-- image topics -> detect nodes -->
+        <line class="edge" x1="270" y1="355" x2="270" y2="429" marker-end="url(#arrow)"/>
+        <line class="edge" x1="770" y1="355" x2="770" y2="429" marker-end="url(#arrow)"/>
+        <!-- detect nodes -> data topics -->
+        <line class="edge" x1="270" y1="510" x2="270" y2="584" marker-end="url(#arrow)"/>
+        <line class="edge" x1="770" y1="510" x2="770" y2="584" marker-end="url(#arrow)"/>
+        <text class="elabel" x="282" y="552">LaneData</text>
+        <text class="elabel" x="782" y="552">TurnDetect</text>
+        <!-- data topics -> controller (merge) -->
+        <line class="edge" x1="270" y1="635" x2="442" y2="703" marker-end="url(#arrow)"/>
+        <line class="edge" x1="770" y1="635" x2="598" y2="703" marker-end="url(#arrow)"/>
+        <!-- controller -> arduino_vel -->
+        <line class="edge" x1="520" y1="791" x2="520" y2="852" marker-end="url(#arrow)"/>
+        <text class="elabel center-anchor" x="520" y="833">geometry_msgs/Twist</text>
+        <!-- arduino_vel -> serial node -->
+        <line class="edge" x1="520" y1="903" x2="520" y2="965" marker-end="url(#arrow)"/>
+        <!-- serial node <-> mega -->
+        <line class="edge" x1="520" y1="1050" x2="520" y2="1098" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+        <text class="elabel" x="535" y="1078">USB serial @115200</text>
+        <!-- serial node -> /ultrasonic -->
+        <line class="edge-muted" x1="685" y1="1008" x2="777" y2="1008" marker-end="url(#arrow)"/>
+        <!-- mega -> motors -->
+        <line class="edge" x1="520" y1="1197" x2="520" y2="1259" marker-end="url(#arrow)"/>
+        <text class="elabel center-anchor" x="520" y="1240">PWM</text>
+
+        <!-- ===== HARDWARE: cameras ===== -->
+        <g>
+          <rect class="ext" x="165" y="41" width="210" height="58" rx="14"/>
+          <text class="nname-e center-anchor" x="270" y="66">USB Camera 1</text>
+          <text class="nsub center-anchor" x="270" y="85">/dev/video0 · 640×480@30</text>
+          <rect class="ext" x="665" y="41" width="210" height="58" rx="14"/>
+          <text class="nname-e center-anchor" x="770" y="66">USB Camera 2</text>
+          <text class="nsub center-anchor" x="770" y="85">/dev/video2 · 640×480@30</text>
+        </g>
+
+        <!-- ===== camera nodes ===== -->
+        <g>
+          <rect class="nbox" x="152" y="161" width="236" height="76" rx="22"/>
+          <text class="nname center-anchor" x="270" y="195">camera1</text>
+          <text class="nsub center-anchor" x="270" y="217">camera / camera.py</text>
+          <rect class="nbox" x="652" y="161" width="236" height="76" rx="22"/>
+          <text class="nname center-anchor" x="770" y="195">camera2</text>
+          <text class="nsub center-anchor" x="770" y="217">camera / camera.py</text>
+        </g>
+
+        <!-- ===== image topics ===== -->
+        <g>
+          <rect class="topic" x="145" y="305" width="250" height="50" rx="25"/>
+          <text class="tname center-anchor" x="270" y="335">/camera/image_raw</text>
+          <rect class="topic" x="645" y="305" width="250" height="50" rx="25"/>
+          <text class="tname center-anchor" x="770" y="335">/camera2/image_raw</text>
+        </g>
+
+        <!-- ===== detect nodes ===== -->
+        <g>
+          <rect class="nbox" x="142" y="430" width="256" height="80" rx="22"/>
+          <text class="nname center-anchor" x="270" y="465">lane_detect_node</text>
+          <text class="nsub center-anchor" x="270" y="488">lane_follower / lane_detect_v2.py</text>
+          <rect class="nbox" x="642" y="430" width="256" height="80" rx="22"/>
+          <text class="nname center-anchor" x="770" y="465">turn_detect_node</text>
+          <text class="nsub center-anchor" x="770" y="488">lane_follower / turn_detect.py</text>
+        </g>
+
+        <!-- ===== data topics ===== -->
+        <g>
+          <rect class="topic" x="170" y="585" width="200" height="50" rx="25"/>
+          <text class="tname center-anchor" x="270" y="615">lane_detect</text>
+          <rect class="topic" x="670" y="585" width="200" height="50" rx="25"/>
+          <text class="tname center-anchor" x="770" y="615">turn_detect</text>
+        </g>
+
+        <!-- ===== controller (brain) ===== -->
+        <rect class="brainbox" x="362" y="703" width="316" height="88" rx="24"/>
+        <text class="nname-b center-anchor" x="520" y="738">lane_controller_fuzzy</text>
+        <text class="nsub center-anchor" x="520" y="759">lane_follower / lane_controller_fuzzy.py</text>
+        <text class="nsub center-anchor" x="520" y="776">5×5 Sugeno 模糊控制 + 轉彎狀態機</text>
+
+        <!-- ===== arduino_vel topic ===== -->
+        <rect class="topic" x="400" y="853" width="240" height="50" rx="25"/>
+        <text class="tname center-anchor" x="520" y="883">arduino_vel</text>
+
+        <!-- ===== serial node ===== -->
+        <rect class="nbox" x="355" y="966" width="330" height="84" rx="22"/>
+        <text class="nname center-anchor" x="520" y="1000">arduino_mega_serial_node</text>
+        <text class="nsub center-anchor" x="520" y="1022">rosserial_python / serial_node.py</text>
+        <text class="nsub center-anchor" x="520" y="1039">port /dev/ttyUSB0 · baud 115200</text>
+
+        <!-- ===== /ultrasonic muted topic ===== -->
+        <rect class="topic-muted" x="780" y="985" width="210" height="46" rx="23"/>
+        <text class="tmuted center-anchor" x="885" y="1006">ultrasonic</text>
+        <text class="tmuted center-anchor" x="885" y="1022" style="font-size:10px">無下游訂閱者</text>
+
+        <!-- ===== Arduino Mega (external) ===== -->
+        <rect class="ext" x="345" y="1099" width="350" height="98" rx="18"/>
+        <text class="nname-e center-anchor" x="520" y="1132">Arduino Mega（外部 MCU）</text>
+        <text class="nsub center-anchor" x="520" y="1153">Twist → 每輪目標 RPM · 編碼器 PID @20Hz</text>
+        <text class="nsub center-anchor" x="520" y="1170">HC-SR04 @10Hz → publish ultrasonic</text>
+        <text class="nsub center-anchor" x="520" y="1187">經 Arduino IDE 燒錄，不在 catkin build 內</text>
+
+        <!-- ===== motors ===== -->
+        <rect class="ext" x="415" y="1259" width="210" height="58" rx="14"/>
+        <text class="nname-e center-anchor" x="520" y="1284">DC 馬達 ×2</text>
+        <text class="nsub center-anchor" x="520" y="1303">TB6612 驅動</text>
+      </svg>
+    </div>
+
+    <div class="callout">
+      <b>注意 use_two_cameras 分支：</b>預設為 <code>true</code>，上圖即此情況。若以 <code>use_two_cameras:=false</code> 啟動，<code>camera2</code> 不會開，但 <code>turn_detect_node</code> <b>仍會啟動</b>（它沒有 <code>if</code> 條件），只是在 <code>/camera2/image_raw</code> 上收不到影像 → 不會發出 <code>turn_detect</code> → 控制器退化成純車道跟隨。
+    </div>
+  </section>
+
+  <!-- ============ NODES ============ -->
+  <section>
+    <div class="section-head">
+      <p class="section-title">6 個節點</p>
+      <h2>每個 Node 在做什麼</h2>
+    </div>
+
+    <div class="grid">
+      <div class="node-card">
+        <span class="nidx">1</span>
+        <h3>camera1</h3>
+        <p class="pkg">camera / camera.py</p>
+        <div class="io-row"><span class="io-tag io-sub">HW</span><span><code>/dev/video0</code> <span class="mtype">V4L2 MJPG 640×480@30</span></span></div>
+        <div class="io-row"><span class="io-tag io-pub">PUB</span><span><code>/camera/image_raw</code> <span class="mtype">sensor_msgs/Image</span></span></div>
+        <div class="io-row"><span class="io-tag io-pub">PUB</span><span><code>/golfbot/camera_web</code> <span class="mtype">String(base64) · Web UI</span></span></div>
+      </div>
+
+      <div class="node-card">
+        <span class="nidx">2</span>
+        <h3>camera2</h3>
+        <p class="pkg">camera / camera.py</p>
+        <div class="io-row"><span class="io-tag io-sub">HW</span><span><code>/dev/video2</code> <span class="mtype">V4L2 MJPG 640×480@30</span></span></div>
+        <div class="io-row"><span class="io-tag io-pub">PUB</span><span><code>/camera2/image_raw</code> <span class="mtype">sensor_msgs/Image</span></span></div>
+        <div class="io-row"><span class="io-tag io-pub">PUB</span><span><code>/golfbot/camera2_web</code> <span class="mtype">String(base64)</span></span></div>
+        <p class="pkg" style="margin-top:12px">僅 <code>use_two_cameras:=true</code> 時啟動</p>
+      </div>
+
+      <div class="node-card">
+        <span class="nidx">3</span>
+        <h3>lane_detect_node</h3>
+        <p class="pkg">lane_follower / lane_detect_v2.py</p>
+        <div class="io-row"><span class="io-tag io-sub">SUB</span><span><code>/camera/image_raw</code> <span class="mtype">Image</span></span></div>
+        <div class="io-row"><span class="io-tag io-pub">PUB</span><span><code>lane_detect</code> <span class="mtype">LaneData(offset, angle)</span></span></div>
+        <div class="io-row"><span class="io-tag io-pub">PUB</span><span><code>lane_detect/image_out</code> · <code>image_binary</code> <span class="mtype">除錯用</span></span></div>
+        <p class="pkg" style="margin-top:12px">前處理 → 找車道輪廓 → 左右追蹤 → 錨點量測 offset/yaw → Kalman/EMA 平滑</p>
+      </div>
+
+      <div class="node-card">
+        <span class="nidx">4</span>
+        <h3>turn_detect_node</h3>
+        <p class="pkg">lane_follower / turn_detect.py</p>
+        <div class="io-row"><span class="io-tag io-sub">SUB</span><span><code>/camera2/image_raw</code> <span class="mtype">Image</span></span></div>
+        <div class="io-row"><span class="io-tag io-pub">PUB</span><span><code>turn_detect</code> <span class="mtype">TurnDetect(dir, pixel_size, offset)</span></span></div>
+        <div class="io-row"><span class="io-tag io-pub">PUB</span><span><code>turn_detect/image_out</code> <span class="mtype">除錯用</span></span></div>
+        <p class="pkg" style="margin-top:12px">找三角形輪廓 → 依頂點位置分左/右 → 連續 CONFIRM_FRAMES 才觸發</p>
+      </div>
+
+      <div class="node-card brain">
+        <span class="nidx">5</span>
+        <h3>lane_controller_fuzzy</h3>
+        <p class="pkg">lane_follower / lane_controller_fuzzy.py</p>
+        <div class="io-row"><span class="io-tag io-sub">SUB</span><span><code>lane_detect</code> <span class="mtype">LaneData</span></span></div>
+        <div class="io-row"><span class="io-tag io-sub">SUB</span><span><code>turn_detect</code> <span class="mtype">TurnDetect</span></span></div>
+        <div class="io-row"><span class="io-tag io-pub">PUB</span><span><code>arduino_vel</code> <span class="mtype">geometry_msgs/Twist</span></span></div>
+        <p class="pkg" style="margin-top:12px">控制大腦：5×5 Sugeno 模糊 (offset, angle)→角速度，外層優先序狀態機：硬轉 &gt; 排程同向轉 &gt; 找招牌 &gt; 對準招牌 &gt; 正常跟隨。關機時送 20 次間隔停車指令。</p>
+      </div>
+
+      <div class="node-card">
+        <span class="nidx">6</span>
+        <h3>arduino_mega_serial_node</h3>
+        <p class="pkg">rosserial_python / serial_node.py</p>
+        <div class="io-row"><span class="io-tag io-sub">CFG</span><span><code>port=/dev/ttyUSB0</code> · <code>baud=115200</code></span></div>
+        <div class="io-row"><span class="io-tag io-sub">→MCU</span><span>把 <code>arduino_vel</code> 橋接給 Mega</span></div>
+        <div class="io-row"><span class="io-tag io-pub">←MCU</span><span>把 Mega 的 <code>ultrasonic</code> 發成 ROS topic</span></div>
+        <p class="pkg" style="margin-top:12px">Pi ↔ Arduino Mega 的 USB 序列橋接</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <b>外部 MCU（不是 ROS node，透過上面的橋接溝通）：</b>Arduino Mega 訂閱 <code>arduino_vel</code>，依 <code>target_rpm_L/R = linear.x·289.4 ∓ angular.z·23.8</code> 換算每輪目標 RPM，跑 20Hz 編碼器 PID 驅動 TB6612 馬達；另以 10Hz 讀 HC-SR04 發布 <code>ultrasonic</code>（cm，-1.0=超出量程）。
+    </div>
+  </section>
+
+  <!-- ============ TOPICS ============ -->
+  <section>
+    <div class="section-head">
+      <p class="section-title">Topic 連線總表</p>
+      <h2>誰發、誰收</h2>
+    </div>
+    <div class="tbl-card">
+      <table>
+        <thead>
+          <tr><th>Topic</th><th>型別</th><th>Publisher → Subscriber</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/camera/image_raw</code></td><td><span class="pill-type">sensor_msgs/Image</span></td><td>camera1 → lane_detect_node</td></tr>
+          <tr><td><code>/camera2/image_raw</code></td><td><span class="pill-type">sensor_msgs/Image</span></td><td>camera2 → turn_detect_node</td></tr>
+          <tr><td><code>lane_detect</code></td><td><span class="pill-type">lane_follower/LaneData</span></td><td>lane_detect_node → lane_controller_fuzzy</td></tr>
+          <tr><td><code>turn_detect</code></td><td><span class="pill-type">lane_follower/TurnDetect</span></td><td>turn_detect_node → lane_controller_fuzzy</td></tr>
+          <tr><td><code>arduino_vel</code></td><td><span class="pill-type">geometry_msgs/Twist</span></td><td>lane_controller_fuzzy → arduino_mega_serial_node（→ Mega）</td></tr>
+          <tr class="muted-row"><td><code>ultrasonic</code></td><td><span class="pill-type">std_msgs/Float32</span></td><td>arduino_mega_serial_node（← Mega）→ <em>目前無訂閱者</em></td></tr>
+          <tr class="muted-row"><td><code>/golfbot/camera_web</code></td><td><span class="pill-type">std_msgs/String</span></td><td>camera1 → <em>Web UI（無 ROS 訂閱者）</em></td></tr>
+          <tr class="muted-row"><td><code>/golfbot/camera2_web</code></td><td><span class="pill-type">std_msgs/String</span></td><td>camera2 → <em>Web UI</em></td></tr>
+          <tr class="muted-row"><td><code>lane_detect/image_out</code></td><td><span class="pill-type">sensor_msgs/Image</span></td><td>lane_detect_node → <em>除錯</em></td></tr>
+          <tr class="muted-row"><td><code>lane_detect/image_binary</code></td><td><span class="pill-type">sensor_msgs/Image</span></td><td>lane_detect_node → <em>除錯</em></td></tr>
+          <tr class="muted-row"><td><code>turn_detect/image_out</code></td><td><span class="pill-type">sensor_msgs/Image</span></td><td>turn_detect_node → <em>除錯</em></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ TUNING ============ -->
+  <section>
+    <div class="section-head">
+      <p class="section-title">Shih 變體的特色</p>
+      <h2>相對標準 bringup 的調校差異</h2>
+    </div>
+    <div class="tune-card">
+      <div class="note">節點架構與 <code>lane_detect_bringup.launch</code> 完全相同，差別只在 <code>lane_controller_fuzzy</code> / <code>lane_detect_node</code> 的參數 —— Shih 版更「積極」：速度更快、轉彎更猛、招牌偵測更早觸發。</div>
+      <table>
+        <thead>
+          <tr><th>參數</th><th>標準 bringup</th><th>Shih</th><th>效果</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>base_speed</code></td><td>0.3</td><td class="delta-up">0.5</td><td>直線基礎車速更快</td></tr>
+          <tr><td><code>max_angular</code></td><td>1.2</td><td class="delta-up">1.6</td><td>正常跟隨可用的最大角速度更大</td></tr>
+          <tr><td><code>hard_turn_angular_1/2</code></td><td>1.8</td><td class="delta-up">2.0</td><td>大轉彎時轉得更猛</td></tr>
+          <tr><td><code>hard_turn_duration_1 / _2</code></td><td>0.9 / 1.2</td><td>1.0 / 1.0</td><td>兩次硬轉時長統一為 1.0s</td></tr>
+          <tr><td><code>hard_turn_cooldown</code></td><td>1</td><td class="delta-up">2.0</td><td>兩次硬轉之間冷卻更久</td></tr>
+          <tr><td><code>sign_detect_pixel_threshold</code></td><td>13000</td><td class="delta-dn">500</td><td><b>招牌偵測門檻大幅降低</b> → 很早就進入對準招牌狀態</td></tr>
+          <tr><td><code>scheduled_turn_delay</code></td><td>5.3</td><td class="delta-dn">3.0</td><td>第一次硬轉後，排程同向跟轉提前到 3s</td></tr>
+          <tr><td><code>scheduled_turn_angular / duration</code></td><td>1.8 / 0.9</td><td>2.0 / 1.0</td><td>排程跟轉更猛、稍長</td></tr>
+          <tr><td><code>anchor_ratio</code> (lane_detect)</td><td>0.8</td><td>0.75</td><td>量測 offset/yaw 的錨點列略往上移</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ KEY CONTRACTS ============ -->
+  <section>
+    <div class="section-head">
+      <p class="section-title">不能搞錯的約定</p>
+      <h2>關鍵契約</h2>
+    </div>
+    <div class="callout"><b>驅動 topic 是 <code>arduino_vel</code>（不是 <code>/cmd_vel</code>）。</b>控制器發它、Mega 韌體訂閱它。要改名 Python 與 <code>.ino</code> 都得一起改。</div>
+    <div class="callout"><b>只用到 <code>linear.x</code> 與 <code>angular.z</code>。</b>Mega 用 <code>LINEAR_SCALE=289.4</code> / <code>ANGULAR_SCALE=23.8</code> 換成左右輪 RPM。</div>
+    <div class="callout"><b>序列鮑率必須一致：115200。</b>launch 的 <code>serial_node</code> 與韌體 <code>setBaud(115200)</code> 兩端要對得上。</div>
+    <div class="callout"><b>自訂訊息：</b><code>LaneData(offset, angle)</code>、<code>TurnDetect(turn_direction, pixel_size, offset)</code>。改 <code>.msg</code> 後要重新 <code>catkin_make</code> 並 <code>source devel/setup.zsh</code>。</div>
+  </section>
+
+</div>
+
+<footer>
+  來源：<code>catkin_ws/src/lane_follower/launch/lane_detect_bringup_Shih.launch</code> 及各節點程式碼 ·
+  以 <code>use_two_cameras:=true</code>（預設）繪製 · 自駕堆疊在 Raspberry Pi 4 的 Docker 容器中執行
+</footer>
+
+</body>
+</html>
