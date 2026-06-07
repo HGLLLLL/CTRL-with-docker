@@ -4,3 +4,4 @@ catkin_ws/devel
 __pycache__/
 catkin_ws/src/dlv_teleop/rosboard/html/js/local_ip.js
 catkin_ws/src/laser_line_extraction/
+catkin_ws/src/vision_opencv/

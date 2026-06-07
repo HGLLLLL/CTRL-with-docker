@@ -15,6 +15,7 @@ RUN rm -f /etc/apt/sources.list.d/ros*.list && \
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       git \
+      unzip \
       zsh \
       tmux \
       htop \
@@ -52,7 +53,19 @@ RUN pip3 install --no-cache-dir \
     # torchvision \
     # ultralytics
 
-# 3. 安裝與設定 Zsh, Oh My Zsh 及相關外掛
+# 3. 安裝 Claude Code CLI (官方原生安裝腳本，免 Node.js，支援 Pi arm64)
+#    裝到 /root/.local/bin/claude；PATH 已在 .zshrc 補上
+RUN curl -fsSL https://claude.ai/install.sh | bash
+
+# 3b. 預先解壓 rosdebug skill 到 staging 目錄。
+#     登入持久化會把 CLAUDE_CONFIG_DIR 掛到主機 (見 Makefile)，那個掛載點會蓋掉
+#     烤進 image 的 skills/，所以這裡只放到 /opt，由 entrypoint 每次開機複製進設定目錄。
+COPY agent_ref/rosdebug.skill /tmp/rosdebug.skill
+RUN mkdir -p /opt/claude-skills && \
+    unzip -o /tmp/rosdebug.skill -d /opt/claude-skills && \
+    rm /tmp/rosdebug.skill
+
+# 4. 安裝與設定 Zsh, Oh My Zsh 及相關外掛
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended && \
     git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k && \
     git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions && \

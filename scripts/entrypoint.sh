@@ -9,6 +9,16 @@ catkin_make
 source /root/catkin_ws/devel/setup.zsh
 cd /root/catkin_ws
 
+# 把預先打包的 rosdebug skill 放進 Claude 設定目錄 (每次開機刷新，idempotent)。
+# CLAUDE_CONFIG_DIR 由 Makefile 掛載到主機，所以 skill 與登入憑證都會落在持久目錄。
+CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-/root/.claude}"
+if [ -d /opt/claude-skills/rosdebug ]; then
+  mkdir -p "$CLAUDE_DIR/skills"
+  cp -r /opt/claude-skills/rosdebug "$CLAUDE_DIR/skills/"
+  echo "Loaded rosdebug skill into $CLAUDE_DIR/skills/"
+  echo " "
+fi
+
 # Setup USB connection
 echo "Remap the serial port(ttyUSBX, ttyACMX) to custom name"
 echo " "
