@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rosserial 修復指南</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
+      min-height: 100vh;
+      padding: 60px 20px;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #e8e8ed;
+      color: #6e6e73;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 6px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin-bottom: 16px;
+      color: #1d1d1f;
+    }
+
+    header p {
+      font-size: 17px;
+      color: #6e6e73;
+      line-height: 1.6;
+    }
+
+    .error-card {
+      background: #fff0f0;
+      border: 1px solid #ffd0d0;
+      border-radius: 16px;
+      padding: 24px 28px;
+      margin-bottom: 48px;
+    }
+
+    .error-card .label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #ff3b30;
+      margin-bottom: 10px;
+    }
+
+    .error-card code {
+      display: block;
+      font-family: "SF Mono", "Menlo", "Monaco", monospace;
+      font-size: 13px;
+      color: #c0392b;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .cause-card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 28px 32px;
+      margin-bottom: 48px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+    }
+
+    .cause-card h2 {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6e6e73;
+      margin-bottom: 12px;
+    }
+
+    .cause-card p {
+      font-size: 16px;
+      line-height: 1.7;
+      color: #1d1d1f;
+    }
+
+    .cause-card p strong {
+      color: #ff3b30;
+    }
+
+    .steps-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6e6e73;
+      margin-bottom: 24px;
+    }
+
+    .step {
+      background: #fff;
+      border-radius: 20px;
+      padding: 32px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+      position: relative;
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .step-number {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #1d1d1f;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .step-number.done {
+      background: #34c759;
+    }
+
+    .step h3 {
+      font-size: 19px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: #1d1d1f;
+    }
+
+    .step p {
+      font-size: 15px;
+      color: #6e6e73;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .step p:last-child {
+      margin-bottom: 0;
+    }
+
+    .code-block {
+      background: #1d1d1f;
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-top: 14px;
+      margin-bottom: 16px;
+    }
+
+    .code-block .lang {
+      font-size: 11px;
+      font-weight: 500;
+      color: #6e6e73;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .code-block code {
+      font-family: "SF Mono", "Menlo", "Monaco", monospace;
+      font-size: 13px;
+      color: #f5f5f7;
+      line-height: 1.8;
+      display: block;
+      white-space: pre;
+    }
+
+    .code-block code .comment {
+      color: #6e6e73;
+    }
+
+    .code-block code .highlight {
+      color: #30d158;
+    }
+
+    .tip {
+      display: flex;
+      gap: 12px;
+      background: #f5f5f7;
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-top: 14px;
+    }
+
+    .tip-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .tip p {
+      font-size: 14px;
+      color: #6e6e73;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .verify-card {
+      background: #f0fff4;
+      border: 1px solid #b7f0c8;
+      border-radius: 20px;
+      padding: 28px 32px;
+      margin-top: 48px;
+    }
+
+    .verify-card .label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #34c759;
+      margin-bottom: 10px;
+    }
+
+    .verify-card h3 {
+      font-size: 19px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .verify-card p {
+      font-size: 15px;
+      color: #6e6e73;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .success-msg {
+      font-family: "SF Mono", "Menlo", monospace;
+      font-size: 13px;
+      color: #34c759;
+      background: #1d1d1f;
+      border-radius: 10px;
+      padding: 14px 16px;
+      line-height: 1.7;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 64px;
+      color: #aeaeb2;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <header>
+      <div class="badge">ROS Noetic · rosserial</div>
+      <h1>Arduino 同步<br/>修復指南</h1>
+      <p>rosserial 協定版本不相容問題的完整解決流程</p>
+    </header>
+
+    <!-- Error Message -->
+    <div class="error-card">
+      <div class="label">發生的錯誤</div>
+      <code>[ERROR] Unable to sync with device; possible link problem or link software version mismatch such as hydro rosserial_python with groovy Arduino
+[INFO]  Requesting topics...
+[ERROR] Unable to sync with device; ...</code>
+    </div>
+
+    <!-- Root Cause -->
+    <div class="cause-card">
+      <h2>根本原因</h2>
+      <p>Arduino 上燒錄的 <strong>rosserial 函式庫版本過舊</strong>（Groovy／Hydro 時代），與 Raspberry Pi 上的 <strong>rosserial_python 0.9.2（Noetic）</strong> 握手協定不相容，導致無法建立連線。</p>
+    </div>
+
+    <!-- Steps -->
+    <div class="steps-title">修復步驟</div>
+
+    <!-- Step 1 -->
+    <div class="step">
+      <div class="step-header">
+        <div class="step-number done">✓</div>
+        <h3>在樹莓派產生 Noetic 版函式庫</h3>
+      </div>
+      <p>此步驟已完成。產生的函式庫已打包於：</p>
+      <div class="code-block">
+        <div class="lang">路徑</div>
+        <code><span class="highlight">/root/catkin_ws/ros_lib_noetic.tar.gz</span></code>
+      </div>
+      <p>此包內含你專案的自訂訊息（<code style="font-size:13px;color:#1d1d1f;">LaneData</code>、<code style="font-size:13px;color:#1d1d1f;">TurnDetect</code>）。</p>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step">
+      <div class="step-header">
+        <div class="step-number">2</div>
+        <h3>下載到你的電腦</h3>
+      </div>
+      <p>在你的電腦終端機執行 scp 下載：</p>
+      <div class="code-block">
+        <div class="lang">Terminal</div>
+        <code>scp pi@&lt;樹莓派IP&gt;:~/catkin_ws/ros_lib_noetic.tar.gz ~/Downloads/</code>
+      </div>
+      <p>解壓縮：</p>
+      <div class="code-block">
+        <div class="lang">Terminal</div>
+        <code>cd ~/Downloads
+tar -xzf ros_lib_noetic.tar.gz</code>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step">
+      <div class="step-header">
+        <div class="step-number">3</div>
+        <h3>替換 Arduino IDE 的 ros_lib</h3>
+      </div>
+      <p>先刪除舊的 <code style="font-size:13px;color:#1d1d1f;">ros_lib</code>，再將新的放入 Arduino libraries 資料夾：</p>
+      <div class="code-block">
+        <div class="lang">Windows</div>
+        <code>C:\Users\你的名字\Documents\Arduino\libraries\ros_lib\</code>
+      </div>
+      <div class="code-block">
+        <div class="lang">macOS / Linux</div>
+        <code>~/Arduino/libraries/ros_lib/</code>
+      </div>
+      <div class="tip">
+        <div class="tip-icon">⚠️</div>
+        <p>務必先完整刪除舊的 ros_lib 資料夾，再放入新的，否則舊檔案可能殘留造成衝突。</p>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step">
+      <div class="step-header">
+        <div class="step-number">4</div>
+        <h3>確認 sketch 鮑率一致</h3>
+      </div>
+      <p>打開 Arduino IDE，確認 sketch 裡的鮑率與 launch file 相同（115200）：</p>
+      <div class="code-block">
+        <div class="lang">Arduino (.ino)</div>
+        <code><span class="comment">// 確認這行的數值是 115200</span>
+nh.getHardware()->setBaud(<span class="highlight">115200</span>);</code>
+      </div>
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <p>launch file 中 <code>baud</code> 參數設定為 115200，Arduino sketch 必須相同。</p>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step">
+      <div class="step-header">
+        <div class="step-number">5</div>
+        <h3>重新上傳 sketch 到 Arduino Mega</h3>
+      </div>
+      <p>重開 Arduino IDE（讓新函式庫生效），然後對你的 Arduino Mega 執行 <strong>Verify → Upload</strong>。</p>
+    </div>
+
+    <!-- Verify -->
+    <div class="verify-card">
+      <div class="label">驗證成功</div>
+      <h3>測試連線</h3>
+      <p>燒錄完成後，在樹莓派執行以下指令：</p>
+      <div class="code-block" style="margin-top:0;margin-bottom:16px;">
+        <div class="lang">zsh</div>
+        <code>source /opt/ros/noetic/setup.zsh
+source /root/catkin_ws/devel/setup.zsh
+rosrun rosserial_python serial_node.py \
+  _port:=/dev/ttyUSB0 _baud:=115200</code>
+      </div>
+      <p>看到以下訊息代表成功：</p>
+      <div class="success-msg">[INFO] registered publisher on /topic_name ...</div>
+    </div>
+
+    <footer>
+      Raspberry Pi · ROS Noetic · rosserial_python 0.9.2
+    </footer>
+
+  </div>
+</body>
+</html>

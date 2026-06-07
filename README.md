@@ -30,7 +30,7 @@ camera2 (/dev/video2) ──► /camera2/image_raw ──► turn_detect.py    �
                                                                  ▼
                                               lane_controller_fuzzy.py ──► arduino_vel (geometry_msgs/Twist)
                                                                  ▼
-                                   rosserial_python serial_node.py (/dev/ttyUSB0 @ 115200)
+                                   rosserial_python serial_node.py (/dev/arduino @ 115200)
                                                                  ▼
               ┌──────────────────  Arduino Mega (agent_ref/CTRL_rosserial_tuned)  ──────────────────┐
               │  arduino_vel → per-wheel target RPM → encoder PID @20Hz → motors                    │
@@ -55,7 +55,7 @@ camera2 (/dev/video2) ──► /camera2/image_raw ──► turn_detect.py    �
 
 Make sure you have Docker installed. If not, download it [here](https://www.docker.com/products/docker-desktop).
 
-For the full self-driving run you also need the hardware attached to the **Pi**: two USB cameras (`/dev/video0`, `/dev/video2`) and the Arduino Mega (`/dev/ttyUSB0`).
+For the full self-driving run you also need the hardware attached to the **Pi**: two USB cameras (`/dev/video0`, `/dev/video2`) and the Arduino Mega. The Mega is referenced through the stable symlink **`/dev/arduino`** rather than a raw `/dev/ttyUSB*` path — see [Stable USB device names](#stable-usb-device-names-udev) below.
 
 ---
 
@@ -134,6 +134,37 @@ Controller and detector behavior is tuned almost entirely through **launch-file 
 
 ---
 
+## Stable USB device names (udev)
+
+USB enumeration order is not guaranteed — the Arduino Mega can come up as `/dev/ttyUSB0` one boot and `/dev/ttyUSB1` the next. To avoid that, the launch files no longer hardcode raw `/dev/ttyUSB*` paths; the device is now declared once at the top of each launch file as an `arg` (default **`/dev/arduino`**) and threaded into the rosserial / camera nodes:
+
+```xml
+<!-- ===== USB Port 宣告(要改裝置就改這裡) ===== -->
+<arg name="arduino_port" default="/dev/arduino" />
+<arg name="cam1_device"  default="/dev/video0" />
+<arg name="cam2_device"  default="/dev/video2" />
+```
+
+The `/dev/arduino` symlink is created by a udev rule that matches the Mega's CH340 USB-serial chip by `idVendor:idProduct` (`1a86:7523`), so it points at the Mega no matter which USB port it's plugged into. Install the rules **once on the Pi host** (outside the container):
+
+```bash
+bash catkin_ws/src/arduino_mega_ctrl/scripts/create_udev_rules.sh
+```
+
+Because the container runs `--privileged --net=host` (shared host `/dev`), the symlink created on the host automatically shows up inside the container — no change to the Docker startup is needed. To point a launch at a different device, override the arg:
+
+```bash
+roslaunch lane_follower lane_detect_bringup.launch arduino_port:=/dev/ttyUSB0
+```
+
+---
+
+## Fixing rosserial sync errors
+
+If the Mega connects but rosserial reports *"Lost sync with device"* or *"Unable to sync with device"*, the Arduino's bundled `ros_lib` is out of step with the host's ROS Noetic message definitions. A pre-generated Noetic `ros_lib` is checked in as **`catkin_ws/ros_lib_noetic.tar.gz`** — unpack it into the Arduino IDE's `libraries/` folder to replace the stale copy. Step-by-step instructions (with the root cause explained) are in **`catkin_ws/rosserial_fix_guide.html`** — open it in a browser.
+
+---
+
 ## `lane_follower` — the brain
 
 Python nodes under `catkin_ws/src/lane_follower/scripts/`:
@@ -166,7 +197,7 @@ Python nodes under `catkin_ws/src/lane_follower/scripts/`:
 
 ## Notes & conventions
 
-- **Device paths:** udev rules provide `/dev/arduino` / `/dev/camera` / `/dev/rplidar`, but the active launch files reference raw paths (`/dev/ttyUSB0`, `/dev/video0`, `/dev/video2`). Match the existing raw-path style when editing.
+- **Device paths:** the active launch files declare devices as `arg`s at the top (`arduino_port` → `/dev/arduino`, `cam1_device` / `cam2_device` → `/dev/video0` / `/dev/video2`) and thread them into the nodes. Override with `roslaunch ... arduino_port:=/dev/ttyUSB0`. Install the `/dev/arduino` udev symlink on the Pi host with `create_udev_rules.sh` (see [Stable USB device names](#stable-usb-device-names-udev)).
 - MJPG + modest resolution is used deliberately to limit USB bandwidth on the Pi.
 - Comments and commit messages are bilingual (Traditional Chinese + English) — preserve the existing language when editing nearby lines.
 - There is no test runner, linter, or CI configured in this repo.
