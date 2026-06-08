@@ -69,16 +69,6 @@ OBSERVATION_SOURCES: Final[frozenset[str]] = frozenset(
     {SOURCE_DETECTED, SOURCE_MEMORY, SOURCE_MISSING}
 )
 
-# --- FitResult.*_reject_reason -----------------------------------------------
-REJECT_NO_POINTS: Final[str] = "no_points"
-REJECT_Y_SPAN_TOO_SMALL: Final[str] = "y_span_too_small"
-REJECT_CURVATURE_TOO_LARGE: Final[str] = "curvature_too_large"
-
-REJECT_REASONS: Final[frozenset[str]] = frozenset(
-    {REJECT_NO_POINTS, REJECT_Y_SPAN_TOO_SMALL, REJECT_CURVATURE_TOO_LARGE}
-)
-
-
 @dataclass(frozen=True)
 class FrameContext:
     """A single captured frame with monotonic identity."""
@@ -121,30 +111,6 @@ class LaneObservation:
 
 
 @dataclass(frozen=True)
-class FitResult:
-    """Quadratic fit per side, plus optional lane-marking boundary polys for fill drawing.
-
-    ``*_poly`` is the centerline fit used by measure. ``*_poly_lo`` / ``*_poly_hi`` describe
-    the inner and outer edges of the lane marking, derived by per-y-bin min_x / max_x —
-    visualize uses them to fill a closed lane-region polygon. They are always None together
-    and always None when the side is invalid.
-    """
-
-    left_poly: np.ndarray | None
-    right_poly: np.ndarray | None
-    left_valid: bool
-    right_valid: bool
-    left_y_span: tuple[int, int] | None
-    right_y_span: tuple[int, int] | None
-    left_reject_reason: str | None
-    right_reject_reason: str | None
-    left_poly_lo: np.ndarray | None
-    left_poly_hi: np.ndarray | None
-    right_poly_lo: np.ndarray | None
-    right_poly_hi: np.ndarray | None
-
-
-@dataclass(frozen=True)
 class MeasureResult:
     """Per-frame offset/yaw measurement at the car anchor point."""
 
@@ -175,7 +141,6 @@ class RenderInputs:
     frame: FrameContext
     preprocess: PreprocessResult
     observation: LaneObservation
-    fit: FitResult
     measure: MeasureResult
     smooth: SmoothResult
     fps: float
@@ -584,7 +549,7 @@ slightly looser metric but adequate at the default 0.15 threshold.
 
 
 
-from typing import Tuple, List, Optional
+from typing import Tuple
 # Internal helper type: (points_Nx2, bbox(x_min, y_min, x_max, y_max), centroid_x)
 _Cand = Tuple[np.ndarray, Tuple[int, int, int, int], float]
 
@@ -850,6 +815,18 @@ def _mean_width(history: list[float]) -> float | None:
         return None
     return float(np.mean(history))
 
+def _none_result(anchor_y: int, car_x: int) -> MeasureResult:
+    """The 'no usable lane this frame' measurement (offset/yaw unknown)."""
+    return MeasureResult(
+        offset_px=None,
+        yaw_deg=None,
+        status=STATUS_NONE,
+        lane_width_used=None,
+        lane_width_raw=None,
+        anchor_y=anchor_y,
+        car_x=car_x,
+    )
+
 def measure_at_anchor(
     obs: LaneObservation,
     cfg: Config,
@@ -929,15 +906,7 @@ def measure_at_anchor(
 
     if left_x is not None and right_x is None:
         if width is None:
-            return MeasureResult(
-                offset_px=None,
-                yaw_deg=None,
-                status=STATUS_NONE,
-                lane_width_used=None,
-                lane_width_raw=None,
-                anchor_y=anchor_y,
-                car_x=car_x,
-            )
+            return _none_result(anchor_y, car_x)
         est_right = left_x + width
         center_x = 0.5 * (left_x + est_right)
         offset = float(car_x) - center_x
@@ -953,15 +922,7 @@ def measure_at_anchor(
 
     if right_x is not None and left_x is None:
         if width is None:
-            return MeasureResult(
-                offset_px=None,
-                yaw_deg=None,
-                status=STATUS_NONE,
-                lane_width_used=None,
-                lane_width_raw=None,
-                anchor_y=anchor_y,
-                car_x=car_x,
-            )
+            return _none_result(anchor_y, car_x)
         est_left = right_x - width
         center_x = 0.5 * (est_left + right_x)
         offset = float(car_x) - center_x
@@ -975,15 +936,7 @@ def measure_at_anchor(
             car_x=car_x,
         )
 
-    return MeasureResult(
-        offset_px=None,
-        yaw_deg=None,
-        status=STATUS_NONE,
-        lane_width_used=None,
-        lane_width_raw=None,
-        anchor_y=anchor_y,
-        car_x=car_x,
-    )
+    return _none_result(anchor_y, car_x)
 
 
 # ============================================================
@@ -1193,8 +1146,8 @@ Does NOT call ``cv2.imshow`` / ``cv2.waitKey``; that's main's responsibility.
 
 Drawing order (back-to-front so later strokes win on overlap):
   1. ROI polygon outline (green)
-  2. Filled lane regions (red left, blue right) via ``fit.*_poly_lo/hi`` if
-     present; centerline polyline fallback otherwise
+  2. Filled lane regions (red left, blue right) from the tracker's per-side
+     ``observation`` points
   3. Anchor point + offset connector line + lane-center marker
   4. Text overlay (offset / yaw / status / fps; "no lane detected" centered
      when status == "none")
@@ -1431,12 +1384,10 @@ class LaneDetectNode:
                 rospy.logerr(f"CvBridge Error (binary image): {e}")
 
         if self.debug_pub.get_num_connections() > 0 or self.show_window:
-            fit_mock = FitResult(None, None, False, False, None, None, None, None, None, None, None, None)
             ri = RenderInputs(
                 frame=frame,
                 preprocess=pre,
                 observation=obs,
-                fit=fit_mock,
                 measure=meas,
                 smooth=smoothed,
                 fps=self.fps_smoothed

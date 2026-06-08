@@ -138,13 +138,7 @@ class LaneControllerFuzzy:
 
     def shutdown_hook(self):
         rospy.loginfo("Shutting down... Stopping the car.")
-        twist = Twist()
-        twist.linear.x = 0.0
-        twist.linear.y = 0.0
-        twist.linear.z = 0.0
-        twist.angular.x = 0.0
-        twist.angular.y = 0.0
-        twist.angular.z = 0.0
+        twist = Twist()  # Twist() zero-initializes every field → a full stop command
         # 大量發送停機指令，確保信號送到 Arduino
         # 注意：shutdown 期間 rospy.sleep() 會立即拋出 ROSInterruptException，
         # 整個迴圈會在不到 1 ms 內跑完，rosserial 可能還沒把訊息送出去就關掉串列埠，
@@ -222,12 +216,8 @@ class LaneControllerFuzzy:
     def lane_callback(self, msg):
         now = rospy.Time.now().to_sec()
         
-        twist = Twist()
-        twist.linear.y = 0.0
-        twist.linear.z = 0.0
-        twist.angular.x = 0.0
-        twist.angular.y = 0.0
-        
+        twist = Twist()  # only linear.x / angular.z are set below; other axes stay 0.0
+
         # 第一優先級：目前正在大轉彎
         if now < self.hard_turn_end_time:
             twist.linear.x = self.base_speed
