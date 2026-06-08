@@ -1,3 +1,4 @@
-# Set the udev rule , make the device_port be fixed by arduino mega board
-# SUBSYSTEM=="tty" ,ATTRS{idVendor}=="1a86" ,ATTRS{idProduct}=="7523" ,SYMLINK+="arduino_mega" , MODE="0666"
-SUBSYSTEM=="tty", KERNELS=="1-1", SYMLINK+="arduino_mega", MODE="0666"
+# Arduino Mega (CH340/CH341 USB-serial chip) → 固定 symlink /dev/arduino
+# 用 idVendor:idProduct 比對,不綁實體 USB 孔,插哪個孔都會是 /dev/arduino。
+# 這台車上 1a86:7523 是 Arduino Mega 獨有(rplidar 10c4:ea60、camera 046d:081b 都不同)。
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", SYMLINK+="arduino", MODE:="0666"

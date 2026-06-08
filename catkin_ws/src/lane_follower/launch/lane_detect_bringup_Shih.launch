@@ -1,7 +1,12 @@
 <launch>
+    <!-- ===== USB Port 宣告(要改裝置就改這裡) ===== -->
+    <arg name="arduino_port" default="/dev/ttyUSB0" />
+    <arg name="cam1_device" default="/dev/video0" />
+    <arg name="cam2_device" default="/dev/video2" />
+
     <!-- rosserial_python 節點 -->
     <node pkg="rosserial_python" type="serial_node.py" name="arduino_mega_serial_node" output="screen">
-        <param name="port" value="/dev/ttyUSB0"/>
+        <param name="port" value="$(arg arduino_port)"/>
         <param name="baud" value="115200"/>
     </node>
 
@@ -19,7 +24,7 @@
     <arg name="cam2_height" default="480" />
 
     <node name="camera1" pkg="camera" type="camera.py" output="screen">
-        <param name="camera_id" value="/dev/video0" />
+        <param name="camera_id" value="$(arg cam1_device)" />
         <param name="camera_name" value="camera" />
         <param name="frame_rate" value="$(arg cam1_fps)" />
         <param name="width" value="$(arg cam1_width)" />
@@ -27,7 +32,7 @@
     </node>
     
     <node name="camera2" pkg="camera" type="camera.py" output="screen" if="$(arg use_two_cameras)">
-        <param name="camera_id" value="/dev/video2" />
+        <param name="camera_id" value="$(arg cam2_device)" />
         <param name="camera_name" value="camera2" />
         <param name="frame_rate" value="$(arg cam2_fps)" />
         <param name="width" value="$(arg cam2_width)" />
