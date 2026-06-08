@@ -2,6 +2,7 @@
 
 import rospy
 import cv2
+import threading
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
 import base64
@@ -48,13 +49,36 @@ class Camera:
     self.bridge = CvBridge()
     self.rate = rospy.Rate(self.frame_rate)
 
-  def talker(self):
+    # 最新影格,由背景擷取執行緒更新,用 lock 保護
+    self.latest_frame = None
+    self.frame_lock = threading.Lock()
+
+    # 把可能阻塞的 cap.read() 移到 daemon 執行緒。
+    # 這樣 Ctrl+C 時主迴圈不會卡在 read() 裡,能立刻檢查 is_shutdown 退出,
+    # roslaunch 就不必升級到 SIGTERM/SIGKILL(原本 camera2 卡死的根因)。
+    self.capture_thread = threading.Thread(target=self._capture_loop)
+    self.capture_thread.daemon = True
+    self.capture_thread.start()
+
+  def _capture_loop(self):
     while not rospy.is_shutdown():
       ret, frame = self.cap.read()
-      if not ret : 
+      if not ret :
         self.rate.sleep()
         continue
-      
+      with self.frame_lock:
+        self.latest_frame = frame
+    # daemon 執行緒:process 結束時會自動被收掉,fd 由 OS 釋放
+
+  def talker(self):
+    while not rospy.is_shutdown():
+      with self.frame_lock:
+        frame = self.latest_frame
+        self.latest_frame = None
+      if frame is None :
+        self.rate.sleep()
+        continue
+
       # 1. Publish standard ROS Image
       try:
         img_msg = self.bridge.cv2_to_imgmsg(frame, "bgr8")
@@ -72,7 +96,6 @@ class Camera:
 
       self.rate.sleep()
 
-    self.cap.release()
     cv2.destroyAllWindows()
     
 if __name__ == '__main__':
