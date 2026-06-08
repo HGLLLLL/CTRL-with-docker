@@ -15,6 +15,12 @@ volatile long theta_Left = 0;
 unsigned long previousMillis = 0;
 float interval = 50.0; // PID 控制週期 (毫秒)，50ms = 20Hz
 
+// ================= 斷線保護 (Command Watchdog) =================
+// 上位機正常情況下以 20Hz (每 50ms) 下達速度指令。若超過此門檻仍未收到新指令，
+// 視為通訊中斷 (Ctrl+C / 拔線 / 上位機 crash)，強制歸零目標速度讓車子停下。
+const unsigned long CMD_TIMEOUT_MS = 300; // 約 6 個控制週期
+volatile unsigned long lastCmdMillis = 0; // 最後一次收到速度指令的時間戳
+
 // 馬達物理參數
 const float CPR = 330.0; 
 
@@ -73,6 +79,9 @@ void velCallback(const geometry_msgs::Twist& vel_msg) {
   // 將 ROS 下達的速度轉換為左右輪的「目標 RPM」
   target_rpm_L = (linear_x * LINEAR_SCALE) - (angular_z * ANGULAR_SCALE);
   target_rpm_R = (linear_x * LINEAR_SCALE) + (angular_z * ANGULAR_SCALE);
+
+  // 餵狗：記錄收到指令的時間，供 watchdog 判斷通訊是否中斷
+  lastCmdMillis = millis();
 }
 
 // 建立訂閱者 (Subscriber)
@@ -153,6 +162,13 @@ void loop() {
   nh.spinOnce();
 
   unsigned long currentMillis = millis();
+
+  // ====== 斷線保護 Watchdog ======
+  // 超過 CMD_TIMEOUT_MS 未收到新速度指令 (或 rosserial 已斷線) 就強制停車。
+  // 目標歸零後，下方 PID 迴圈會自動清掉積分項並把 PWM 設為 0。
+  if ((currentMillis - lastCmdMillis > CMD_TIMEOUT_MS) || !nh.connected()) {
+    stopMove();
+  }
 
   // ====== PID 控制迴圈 (每 50 毫秒執行一次) ======
   if (currentMillis - previousMillis >= interval) {
