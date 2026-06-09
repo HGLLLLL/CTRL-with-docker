@@ -10,12 +10,14 @@
     /cmd_vel       (geometry_msgs/Twist) -> 控制底盤
 
 流程（半寫死）：
-    State 1: 直行，直到 /lidar_output < 0.15 m
+    State 1: 直行，直到 /lidar_output < dist_th_1
     State 2: 右轉 90 度（用 odom 角度變化判斷）
-    State 3: 直行，直到 /lidar_output < 0.10 m
-    State 4: 左轉 90 度（用 odom 角度變化判斷）
-    State 5: 直行，直到 /lidar_output < 0.20 m
-    State 6: 停車，結束
+    State 3: 直行，直到 /lidar_output < dist_th_2
+    State 4: 左轉 90 度
+    State 5: 直行，直到 /lidar_output < dist_th_3
+    State 6: 右轉 90 度
+    State 7: 直行，直到 /lidar_output < dist_th_4
+    State 8: 停車，結束
 
 注意：角度差需處理 wrap-around（例如從 +179 度繞到 -179 度）。
 """
@@ -29,13 +31,15 @@ from std_msgs.msg import Float32
 
 
 # ---- 狀態列舉 ----
-S_FWD_1 = 1   # 直行 -> 0.15m
-S_TURN_R = 2  # 右轉 90 度
-S_FWD_2 = 3   # 直行 -> 0.10m
-S_TURN_L = 4  # 左轉 90 度
-S_FWD_3 = 5   # 直行 -> 0.20m
-S_STOP = 6    # 停車
-S_BRAKE = 7   # 轉彎結束後的剎車過渡（publish 全 0 twist 等底盤慣性衰減）
+S_FWD_1 = 1     # 直行 -> dist_th_1
+S_TURN_R = 2    # 右轉 90 度
+S_FWD_2 = 3     # 直行 -> dist_th_2
+S_TURN_L = 4    # 左轉 90 度
+S_FWD_3 = 5     # 直行 -> dist_th_3
+S_STOP = 6      # 停車
+S_BRAKE = 7     # 轉彎結束後的剎車過渡（publish 全 0 twist 等底盤慣性衰減）
+S_TURN_R2 = 8   # 第二次右轉 90 度
+S_FWD_4 = 9     # 直行 -> dist_th_4
 
 
 def quat_to_yaw(q):
@@ -61,6 +65,7 @@ class LidarOdomNavNode(object):
         self.dist_th_1 = float(rospy.get_param('~dist_th_1', 0.15))
         self.dist_th_2 = float(rospy.get_param('~dist_th_2', 0.10))
         self.dist_th_3 = float(rospy.get_param('~dist_th_3', 0.20))
+        self.dist_th_4 = float(rospy.get_param('~dist_th_4', 0.20))
 
         # ---- 轉彎容差 ----
         # 旋轉角度目標 = 90 度。實際下指令停轉的角度為:
@@ -101,10 +106,10 @@ class LidarOdomNavNode(object):
 
         rospy.on_shutdown(self.on_shutdown)
         rospy.loginfo(
-            "[nav_lidar_odom] v=%.2f m/s, w=%.2f rad/s, th=%.2f/%.2f/%.2f m, "
+            "[nav_lidar_odom] v=%.2f m/s, w=%.2f rad/s, th=%.2f/%.2f/%.2f/%.2f m, "
             "overshoot=%.1f deg, brake=%.2f s",
             self.v_linear, self.v_angular,
-            self.dist_th_1, self.dist_th_2, self.dist_th_3,
+            self.dist_th_1, self.dist_th_2, self.dist_th_3, self.dist_th_4,
             math.degrees(self.turn_overshoot), self.brake_duration,
         )
 
@@ -190,13 +195,30 @@ class LidarOdomNavNode(object):
             elif self.state == S_FWD_3:
                 cmd = self._make_twist(vx=self.v_linear)
                 if self.front_dist < self.dist_th_3:
-                    rospy.loginfo("[nav] State5 done (d=%.3f) -> 停車", self.front_dist)
+                    rospy.loginfo("[nav] State5 done (d=%.3f) -> 右轉 90 (#2)",
+                                  self.front_dist)
+                    self.state = S_TURN_R2
+                    self._start_turn()
+
+            elif self.state == S_TURN_R2:
+                cmd = self._make_twist(wz=-self.v_angular)
+                if abs(self.turn_accum) >= (
+                    self.turn_target - self.turn_overshoot - self.turn_tol
+                ):
+                    rospy.loginfo("[nav] State6 cmd-stop (Δyaw=%.1f deg) -> brake",
+                                  math.degrees(self.turn_accum))
+                    self._enter_brake(next_state=S_FWD_4)
+
+            elif self.state == S_FWD_4:
+                cmd = self._make_twist(vx=self.v_linear)
+                if self.front_dist < self.dist_th_4:
+                    rospy.loginfo("[nav] State7 done (d=%.3f) -> 停車", self.front_dist)
                     self.state = S_STOP
 
             elif self.state == S_STOP:
                 cmd = self._make_twist()
                 self.pub_cmd.publish(cmd)
-                rospy.loginfo("[nav] State6: 任務完成，停車。")
+                rospy.loginfo("[nav] State8: 任務完成，停車。")
                 break
 
             self.pub_cmd.publish(cmd)
