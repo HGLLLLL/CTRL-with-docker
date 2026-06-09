@@ -49,6 +49,12 @@ Packages present in this repo:
 - **`lane_follower`** — Python lane-detection + control nodes (`lane_detect.py`, `lane_detect_v2.py`, `lane_controller.py`, `lane_controller_fuzzy.py`, `turn_detect.py`). Multiple launch variants exist for different detector/controller pairings.
 - **`arduino_mega_ctrl`** — rosserial bridge launches (`arduino_bringup.launch`, `lane_following.launch`) plus a `move_straight_5s.py` test script. Expects `/dev/arduino`.
 - **`simple_twist_publisher`** — small C++ utility node.
+- **`nav_scripts`** — 雷射 + 編碼器導航腳本集 (Python)：
+  - `lidar_filter_node.py`：訂閱 `/scan`，擷取正前方 `±~front_angle_range` 度扇形、過濾 `0/inf`，發布最短距離到 `/lidar_output` (std_msgs/Float32)。處理 RPLidar 陣列頭尾相接。
+  - `odometry_node.py`：訂閱 `/encoders` (geometry_msgs/Point，x=左輪累積 ticks，y=右輪累積 ticks)，差動驅動運動學積分後發布 `/odometry` (nav_msgs/Odometry) 並廣播 `odom -> base_link` TF。必要參數 `~wheel_radius` / `~wheel_base` / `~ticks_per_rev` 必須由 launch 指定，未指定會 `logfatal` 結束。
+  - `lidar_odom_nav_node.py`：半寫死狀態機（直行→右轉 90°→直行→左轉 90°→直行→停車），距離門檻來自 `/lidar_output`，轉彎角度用 `/odometry` 累積差量判斷（已處理 yaw wrap-around）。發布 `/cmd_vel`。
+  - `pure_odom_nav_node.py`：純里程計盲走，動作以 `DEFAULT_PLAN` (list of dict, 支援 `forward / backward / turn / wait / stop`) 描述，方便擴充路徑點。
+  - 整合 launch：`nav_bringup.launch`，用 `nav_mode:=lidar_odom | pure_odom | none` 切換要跑哪個導航腳本（`lidar_filter` 與 `odometry` 一律啟動）。`cmd_vel_topic` 預設 remap 成 `/arduino_vel` 對接 rosserial。
 
 ### Conventions
 
