@@ -1,0 +1,31 @@
+<launch>
+
+  <!-- 編碼器 ticks topic -->
+  <arg name="encoders_topic" default="/encoders"/>
+
+  <!-- ============ 里程計參數 ============ -->
+  <!-- 輪子半徑 (m) -->
+  <arg name="wheel_radius"   default="0.00331"/>
+  <!-- 左右輪距 (m) -->
+  <arg name="wheel_base"     default="0.166"/>
+  <!-- 一圈 ticks 數 -->
+  <arg name="ticks_per_rev"  default="390.3"/>
+
+
+
+  <!-- =================================================== -->
+  <!-- 任務二：編碼器里程計 -->
+  <!-- =================================================== -->
+  <node pkg="nav_scripts" type="odometry_node.py" name="odometry_node" output="screen">
+    <param name="wheel_radius"   value="$(arg wheel_radius)"/>
+    <param name="wheel_base"     value="$(arg wheel_base)"/>
+    <param name="ticks_per_rev"  value="$(arg ticks_per_rev)"/>
+    <param name="odom_frame"     value="odom"/>
+    <param name="base_frame"     value="base_link"/>
+    <param name="publish_tf"     value="true"/>
+    <remap from="/encoders"  to="$(arg encoders_topic)"/>
+    <remap from="/odometry"  to="/odometry"/>
+  </node>
+
+
+</launch>
