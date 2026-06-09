@@ -34,8 +34,6 @@ include_directories(
 
 # 安裝 Python scripts 到 package 執行路徑
 catkin_install_python(PROGRAMS
-  scripts/lane_detect.py
-  scripts/lane_controller.py
   scripts/lane_controller_fuzzy.py
   scripts/lane_detect_v2.py
   scripts/turn_detect.py
