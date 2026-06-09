@@ -34,11 +34,11 @@
 
   <!-- ============ 里程計參數（待測，請自行填入） ============ -->
   <!-- 輪子半徑 (m) -->
-  <arg name="wheel_radius"   default=""/>
+  <arg name="wheel_radius"   default="0.00331"/>
   <!-- 左右輪距 (m) -->
-  <arg name="wheel_base"     default=""/>
+  <arg name="wheel_base"     default="0.166"/>
   <!-- 一圈 ticks 數 -->
-  <arg name="ticks_per_rev"  default=""/>
+  <arg name="ticks_per_rev"  default="390.3"/>
 
   <!-- ============ 導航速度（兩個導航腳本共用預設） ============ -->
   <arg name="v_linear"  default="0.30"/>
