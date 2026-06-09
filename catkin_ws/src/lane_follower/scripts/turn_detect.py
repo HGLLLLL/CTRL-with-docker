@@ -214,11 +214,13 @@ class TurnDetectNode:
         # 讀取 ROS 參數配置
         self.image_topic = rospy.get_param('~image_topic', '/usb_cam/image_raw')
         self.debug_topic = rospy.get_param('~debug_topic', 'turn_detect/image_out')
+        self.binary_topic = rospy.get_param('~binary_topic', 'turn_detect/binary')
         self.show_window = rospy.get_param('~show_window', SHOW_WINDOW)
-        
+
         # 建立 Publisher 與 Subscriber
         self.pub = rospy.Publisher('turn_detect', TurnDetect, queue_size=10)
         self.debug_pub = rospy.Publisher(self.debug_topic, Image, queue_size=1)
+        self.binary_pub = rospy.Publisher(self.binary_topic, Image, queue_size=1)
         self.sub = rospy.Subscriber(self.image_topic, Image, self.image_callback, queue_size=1, buff_size=2**24)
         
         self.tracker = Tracker()
@@ -242,6 +244,16 @@ class TurnDetectNode:
         self.prev_tick = curr_tick
             
         binary = preprocess(frame)
+
+        # 發布二值化結果（mono8），有訂閱者才送以省 CPU
+        if self.binary_pub.get_num_connections() > 0:
+            try:
+                bin_msg = self.bridge.cv2_to_imgmsg(binary, "mono8")
+                bin_msg.header = msg.header
+                self.binary_pub.publish(bin_msg)
+            except CvBridgeError as e:
+                rospy.logerr(f"CV Bridge Error on binary publish: {e}")
+
         triangle = find_triangle(binary)
         state = self.tracker.update(triangle)
         

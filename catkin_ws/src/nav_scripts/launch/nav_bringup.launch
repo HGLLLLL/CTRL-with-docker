@@ -101,8 +101,8 @@
       <param name="v_angular"    value="$(arg v_angular)"/>
       <param name="dist_th_1"    value="0.30"/>
       <param name="dist_th_2"    value="0.30"/>
-      <param name="dist_th_3"    value="0.40"/>
-      <param name="dist_th_4"    value="0.50"/>
+      <param name="dist_th_3"    value="0.45"/>
+      <param name="dist_th_4"    value="0.65"/>
       <!-- 轉彎慣性補償：實測再調。先給 10 度 + 0.3 秒剎車過渡 -->
       <param name="turn_overshoot_deg" value="10.0"/>
       <param name="turn_tol_deg"       value="2.0"/>
