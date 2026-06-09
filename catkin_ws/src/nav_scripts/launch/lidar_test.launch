@@ -1,0 +1,19 @@
+<launch>
+
+  <!-- LaserScan topic（如果硬體不是 /scan 可在這裡 remap 來源） -->
+  <arg name="scan_topic" default="/scan"/>
+
+  <!-- 光達正前方擷取範圍 (±度) -->
+  <arg name="front_angle_range" default="15.0"/>
+
+  <include file="$(find rplidar_ros)/launch/rplidar_a1.launch" />
+
+
+  <node pkg="nav_scripts" type="lidar_filter_node.py" name="lidar_filter_node" output="screen">
+    <param name="front_angle_range" value="$(arg front_angle_range)"/>
+    <param name="max_valid_range"   value="12.0"/>
+    <remap from="/scan"          to="$(arg scan_topic)"/>
+    <remap from="/lidar_output"  to="/lidar_output"/>
+  </node>
+
+</launch>
