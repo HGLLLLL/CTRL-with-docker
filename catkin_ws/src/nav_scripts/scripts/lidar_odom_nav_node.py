@@ -27,10 +27,11 @@ import math
 import rospy
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, String
 
 
 # ---- 狀態列舉 ----
+S_IDLE = 0      # 等待 /mission/phase = "lidar_avoid"，期間不發 cmd_vel
 S_FWD_1 = 1     # 直行 -> dist_th_1
 S_TURN_R = 2    # 右轉 90 度
 S_FWD_2 = 3     # 直行 -> dist_th_2
@@ -89,8 +90,14 @@ class LidarOdomNavNode(object):
         # 控制迴圈頻率
         self.rate_hz = float(rospy.get_param('~rate_hz', 20.0))
 
+        # ---- 任務階段門控 ----
+        # wait_for_phase=True：啟動後停在 S_IDLE，直到收到 /mission/phase = "lidar_avoid" 才開跑。
+        # 設 False 則保留舊行為（直接從 S_FWD_1 起跑），方便單獨測試本節點。
+        self.wait_for_phase = bool(rospy.get_param('~wait_for_phase', True))
+        self.trigger_phase = str(rospy.get_param('~trigger_phase', 'lidar_avoid'))
+
         # ---- 狀態 ----
-        self.state = S_FWD_1
+        self.state = S_IDLE if self.wait_for_phase else S_FWD_1
         self.front_dist = float('inf')
         self.have_odom = False
         self.cur_yaw = 0.0
@@ -103,6 +110,7 @@ class LidarOdomNavNode(object):
         self.pub_cmd = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
         rospy.Subscriber('/lidar_output', Float32, self.lidar_cb, queue_size=10)
         rospy.Subscriber('/odometry', Odometry, self.odom_cb, queue_size=10)
+        rospy.Subscriber('/mission/phase', String, self.phase_cb, queue_size=1)
 
         rospy.on_shutdown(self.on_shutdown)
         rospy.loginfo(
@@ -114,6 +122,12 @@ class LidarOdomNavNode(object):
         )
 
     # ------------------------------------------------------------------
+    def phase_cb(self, msg):
+        # 只在 IDLE 收到觸發 phase 才開跑；其他狀態收到不改 FSM，避免賽中誤觸發。
+        if self.state == S_IDLE and msg.data == self.trigger_phase:
+            rospy.loginfo("[nav] /mission/phase=%s -> 進入 S_FWD_1", msg.data)
+            self.state = S_FWD_1
+
     def lidar_cb(self, msg):
         self.front_dist = msg.data
 
@@ -148,6 +162,11 @@ class LidarOdomNavNode(object):
     def run(self):
         rate = rospy.Rate(self.rate_hz)
         while not rospy.is_shutdown():
+            # IDLE：lane_controller 還在開車，本節點完全不發 cmd_vel 避免衝突。
+            if self.state == S_IDLE:
+                rate.sleep()
+                continue
+
             cmd = self._make_twist()
 
             if self.state == S_FWD_1:

@@ -3,6 +3,7 @@
 
 import rospy
 from geometry_msgs.msg import Twist
+from std_msgs.msg import String
 import sys
 import time
 
@@ -119,13 +120,26 @@ class LaneControllerFuzzy:
         self.scheduled_turn_pending = False
         self.scheduled_turn_trigger_time = 0.0
         self.scheduled_turn_dir = None
-        
+
+        # ---- Mission handoff (lane -> lidar_avoid) ----
+        # 第 hard_turn_trigger_count 次 vision 觸發的硬轉完成後，停車 handoff_stop_duration 秒，
+        # 然後 publish /mission/phase = "lidar_avoid"，本節點之後不再發 cmd_vel，
+        # 由 lidar_odom_nav_node 接管底盤。
+        self.hard_turn_trigger_count = rospy.get_param('~hard_turn_trigger_count', 3)
+        self.handoff_stop_duration = rospy.get_param('~handoff_stop_duration', 1.0)
+        self.handoff_started = False
+        self.handoff_stop_end_time = 0.0
+        self.handed_off = False
+
         # Initialize Fuzzy Controller
         self.fuzzy_controller = FuzzyLogicController()
-        
+
         # Publisher
         self.cmd_pub = rospy.Publisher('arduino_vel', Twist, queue_size=10)
-        
+        # latched 任務階段，後啟動的 lidar_odom_nav 也能讀到當前值
+        self.phase_pub = rospy.Publisher('/mission/phase', String, queue_size=1, latch=True)
+        self.phase_pub.publish(String(data="lane"))
+
         # Subscriber: Subscribe to the custom message containing offset and angle
         self.lane_sub = rospy.Subscriber('lane_detect', LaneData, self.lane_callback)
         self.turn_sub = rospy.Subscriber('turn_detect', TurnDetect, self.turn_callback)
@@ -221,13 +235,39 @@ class LaneControllerFuzzy:
 
     def lane_callback(self, msg):
         now = rospy.Time.now().to_sec()
-        
+
+        # ---- Mission handoff 檢查（最高優先級） ----
+        # 已交棒：完全靜音，由 lidar_odom_nav 接管 /arduino_vel
+        if self.handed_off:
+            return
+
+        # 第 N 次 vision 硬轉已結束 -> 啟動交棒流程
+        if (not self.handoff_started
+                and self.hard_turn_count >= self.hard_turn_trigger_count
+                and now >= self.hard_turn_end_time):
+            self.handoff_started = True
+            self.handoff_stop_end_time = now + self.handoff_stop_duration
+            rospy.loginfo("[mission] 第 %d 次硬轉結束 -> 停車 %.1fs 後交棒給 lidar_avoid",
+                          self.hard_turn_trigger_count, self.handoff_stop_duration)
+
+        # 交棒中：停車並等待，期間忽略循線
+        if self.handoff_started:
+            if now < self.handoff_stop_end_time:
+                self.cmd_pub.publish(Twist())
+                return
+            # 停車視窗結束：發階段切換、補一筆 0 速度、之後靜音
+            self.phase_pub.publish(String(data="lidar_avoid"))
+            self.cmd_pub.publish(Twist())
+            self.handed_off = True
+            rospy.loginfo("[mission] /mission/phase = lidar_avoid，lane_controller 進入靜音")
+            return
+
         twist = Twist()
         twist.linear.y = 0.0
         twist.linear.z = 0.0
         twist.angular.x = 0.0
         twist.angular.y = 0.0
-        
+
         # 第一優先級：目前正在大轉彎
         if now < self.hard_turn_end_time:
             twist.linear.x = self.base_speed

@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>main_control</name>
+  <version>0.0.1</version>
+  <description>
+    任務整合 launch：走線 -> 第三次硬轉完停車 -> 光達避障。
+    本 package 只放 launch 檔，實際節點由 lane_follower、nav_scripts、camera、rplidar_ros、rosserial_python 提供。
+  </description>
+
+  <maintainer email="user@todo.todo">User</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <exec_depend>roslaunch</exec_depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>rosserial_python</exec_depend>
+  <exec_depend>rplidar_ros</exec_depend>
+  <exec_depend>camera</exec_depend>
+  <exec_depend>lane_follower</exec_depend>
+  <exec_depend>nav_scripts</exec_depend>
+</package>

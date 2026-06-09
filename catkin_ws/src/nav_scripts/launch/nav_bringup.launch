@@ -94,6 +94,9 @@
   <group if="$(eval arg('nav_mode') == 'lidar_odom')">
     <node pkg="nav_scripts" type="lidar_odom_nav_node.py"
           name="lidar_odom_nav_node" output="screen">
+      <!-- 單獨跑本 launch 時不等 /mission/phase，直接從 S_FWD_1 起跑。
+           任務整合用 main_control/mission_bringup.launch 才會開 wait_for_phase。 -->
+      <param name="wait_for_phase" value="false"/>
       <param name="v_linear"     value="$(arg v_linear)"/>
       <param name="v_angular"    value="$(arg v_angular)"/>
       <param name="dist_th_1"    value="0.30"/>
