@@ -1,0 +1,25 @@
+<launch>
+    <!-- ===== USB Port 宣告(要改裝置就改這裡) ===== -->
+    <arg name="grove_port" default="/dev/ttyACM0" />
+    <arg name="grove_baud" default="921600" />
+
+    <!-- 是否把模組吐出的原始字串也印到畫面(boot log / RAW JSON) -->
+    <arg name="print_raw" default="true" />
+    <!-- 分數門檻:先設 0,所有偵測都發布 -->
+    <arg name="min_score" default="0" />
+    <!-- 開埠後自動送 AT+INVOKE 讓模組連續推論(否則 topic 會一直是 none) -->
+    <arg name="auto_invoke" default="true" />
+
+    <!-- 紅綠燈節點 -->
+    <node pkg="traffic_light" type="traffic_light_node.py" name="traffic_light" output="screen">
+        <param name="port" value="$(arg grove_port)" />
+        <param name="baud" value="$(arg grove_baud)" />
+        <param name="print_raw" value="$(arg print_raw)" />
+        <param name="min_score" value="$(arg min_score)" />
+        <param name="auto_invoke" value="$(arg auto_invoke)" />
+
+        <!-- box 裡 target_id → label 名稱。順序必須跟模組 AT+INFO? 回報的 classes 一致:
+             [green, red, yellow](已用真機驗證,2026-06-09) -->
+        <rosparam param="labels">['green', 'red', 'yellow']</rosparam>
+    </node>
+</launch>

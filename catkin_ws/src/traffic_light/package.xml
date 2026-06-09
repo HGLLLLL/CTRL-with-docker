@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>traffic_light</name>
+  <version>0.0.0</version>
+  <description>讀取 Grove Vision AI V2 (USB-C serial) 的偵測結果並印出 / 發布</description>
+  <maintainer email="lbbworkspace@gmail.com">lbbworkspace</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>python3-serial</exec_depend>
+</package>
