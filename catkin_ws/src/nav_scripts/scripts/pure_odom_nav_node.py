@@ -29,11 +29,21 @@ from nav_msgs.msg import Odometry
 
 # ---- 預設路徑（依任務描述）----
 DEFAULT_PLAN = [
-    {'type': 'forward', 'distance': 0.50},
+    {'type': 'forward', 'distance': 0.30},
     {'type': 'wait',    'duration': 0.3},      # 等慣性穩定，避免量測誤差累積
     {'type': 'turn',    'angle_deg': -90.0},   # 右轉
     {'type': 'wait',    'duration': 0.3},
     {'type': 'forward', 'distance': 0.30},
+    {'type': 'wait',    'duration': 0.3},
+    {'type': 'turn',    'angle_deg': -90.0},
+    {'type': 'wait',    'duration': 0.3},
+    {'type': 'forward', 'distance': 0.30},
+    {'type': 'wait',    'duration': 0.3},
+    {'type': 'turn',    'angle_deg': -90.0},
+    {'type': 'wait',    'duration': 0.3},
+    {'type': 'forward', 'distance': 0.30},
+    {'type': 'wait',    'duration': 0.3},
+    {'type': 'turn',    'angle_deg': -90.0},
     {'type': 'wait',    'duration': 0.3},
     {'type': 'stop'},
 ]
