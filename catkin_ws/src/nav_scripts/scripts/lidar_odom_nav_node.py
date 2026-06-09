@@ -35,6 +35,7 @@ S_FWD_2 = 3   # 直行 -> 0.10m
 S_TURN_L = 4  # 左轉 90 度
 S_FWD_3 = 5   # 直行 -> 0.20m
 S_STOP = 6    # 停車
+S_BRAKE = 7   # 轉彎結束後的剎車過渡（publish 全 0 twist 等底盤慣性衰減）
 
 
 def quat_to_yaw(q):
@@ -62,9 +63,23 @@ class LidarOdomNavNode(object):
         self.dist_th_3 = float(rospy.get_param('~dist_th_3', 0.20))
 
         # ---- 轉彎容差 ----
-        # 旋轉角度目標 = 90 度；達到 90 - tol 時就視為到位，避免慣性過衝
+        # 旋轉角度目標 = 90 度。實際下指令停轉的角度為:
+        #   turn_target - turn_overshoot - turn_tol
+        # 其中 turn_overshoot 為「預估底盤從滿速到停下還會多轉的角度」（慣性補償），
+        # 由實測校準；turn_tol 是額外安全餘量（寧可少轉一點，剎車階段也能再補測）。
         self.turn_target = math.radians(90.0)
+        self.turn_overshoot = math.radians(
+            float(rospy.get_param('~turn_overshoot_deg', 10.0))
+        )
         self.turn_tol = math.radians(float(rospy.get_param('~turn_tol_deg', 2.0)))
+
+        # ---- 剎車過渡 ----
+        # 轉彎達標 -> 進入 S_BRAKE，publish 全 0 twist 持續 brake_duration 秒，
+        # 等底盤的角速度真正衰減到 0 後，再切到下一個直行狀態。
+        # 期間 turn_accum 仍在更新，因此 log 出來的最終 Δyaw 才是「真正」轉了多少。
+        self.brake_duration = float(rospy.get_param('~brake_duration', 0.3))
+        self.brake_end_time = None     # rospy.Time，剎車結束時刻
+        self.brake_next_state = None   # 剎車完成後要切去的狀態
 
         # 控制迴圈頻率
         self.rate_hz = float(rospy.get_param('~rate_hz', 20.0))
@@ -86,9 +101,11 @@ class LidarOdomNavNode(object):
 
         rospy.on_shutdown(self.on_shutdown)
         rospy.loginfo(
-            "[nav_lidar_odom] v=%.2f m/s, w=%.2f rad/s, th=%.2f/%.2f/%.2f m",
+            "[nav_lidar_odom] v=%.2f m/s, w=%.2f rad/s, th=%.2f/%.2f/%.2f m, "
+            "overshoot=%.1f deg, brake=%.2f s",
             self.v_linear, self.v_angular,
             self.dist_th_1, self.dist_th_2, self.dist_th_3,
+            math.degrees(self.turn_overshoot), self.brake_duration,
         )
 
     # ------------------------------------------------------------------
@@ -111,6 +128,12 @@ class LidarOdomNavNode(object):
         self.turn_accum = 0.0
         self.turn_start_yaw = self.cur_yaw
 
+    def _enter_brake(self, next_state):
+        """轉彎達標 -> 進入剎車過渡。"""
+        self.brake_next_state = next_state
+        self.brake_end_time = rospy.Time.now() + rospy.Duration(self.brake_duration)
+        self.state = S_BRAKE
+
     def _make_twist(self, vx=0.0, wz=0.0):
         t = Twist()
         t.linear.x = vx
@@ -132,10 +155,13 @@ class LidarOdomNavNode(object):
             elif self.state == S_TURN_R:
                 # 右轉 = 角速度為負（右手系：z 軸向上、逆時針為正）
                 cmd = self._make_twist(wz=-self.v_angular)
-                if abs(self.turn_accum) >= (self.turn_target - self.turn_tol):
-                    rospy.loginfo("[nav] State2 done (Δyaw=%.1f deg) -> 直行",
+                # 提早停轉以補償慣性 overshoot
+                if abs(self.turn_accum) >= (
+                    self.turn_target - self.turn_overshoot - self.turn_tol
+                ):
+                    rospy.loginfo("[nav] State2 cmd-stop (Δyaw=%.1f deg) -> brake",
                                   math.degrees(self.turn_accum))
-                    self.state = S_FWD_2
+                    self._enter_brake(next_state=S_FWD_2)
 
             elif self.state == S_FWD_2:
                 cmd = self._make_twist(vx=self.v_linear)
@@ -146,10 +172,20 @@ class LidarOdomNavNode(object):
 
             elif self.state == S_TURN_L:
                 cmd = self._make_twist(wz=+self.v_angular)
-                if abs(self.turn_accum) >= (self.turn_target - self.turn_tol):
-                    rospy.loginfo("[nav] State4 done (Δyaw=%.1f deg) -> 直行",
+                if abs(self.turn_accum) >= (
+                    self.turn_target - self.turn_overshoot - self.turn_tol
+                ):
+                    rospy.loginfo("[nav] State4 cmd-stop (Δyaw=%.1f deg) -> brake",
                                   math.degrees(self.turn_accum))
-                    self.state = S_FWD_3
+                    self._enter_brake(next_state=S_FWD_3)
+
+            elif self.state == S_BRAKE:
+                # 持續發 0 速度讓底盤慣性衰減；odom 仍會更新 turn_accum
+                cmd = self._make_twist()
+                if rospy.Time.now() >= self.brake_end_time:
+                    rospy.loginfo("[nav] brake done (final Δyaw=%.1f deg) -> 直行",
+                                  math.degrees(self.turn_accum))
+                    self.state = self.brake_next_state
 
             elif self.state == S_FWD_3:
                 cmd = self._make_twist(vx=self.v_linear)
