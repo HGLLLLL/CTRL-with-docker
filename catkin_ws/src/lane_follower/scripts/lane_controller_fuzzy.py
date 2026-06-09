@@ -96,6 +96,12 @@ class LaneControllerFuzzy:
         self.scheduled_turn_delay = rospy.get_param('~scheduled_turn_delay', 3.0)
         self.scheduled_turn_angular = rospy.get_param('~scheduled_turn_angular', 2.0)
         self.scheduled_turn_duration = rospy.get_param('~scheduled_turn_duration', 1.0)
+
+        # Params for the scheduled turn triggered X seconds after the SECOND vision hard turn
+        # 第二次大轉彎完成後，經過 scheduled_turn_delay_2 秒，再執行一次同方向的硬轉
+        self.scheduled_turn_delay_2 = rospy.get_param('~scheduled_turn_delay_2', 3.0)
+        self.scheduled_turn_angular_2 = rospy.get_param('~scheduled_turn_angular_2', 2.0)
+        self.scheduled_turn_duration_2 = rospy.get_param('~scheduled_turn_duration_2', 1.0)
         
         # Sign alignment parameters
         self.sign_detect_pixel_threshold = rospy.get_param('~sign_detect_pixel_threshold', 5000.0)
@@ -116,10 +122,14 @@ class LaneControllerFuzzy:
         self.is_scanning = False
         self.scan_start_time = 0.0
 
-        # Scheduled-turn state (armed after the first hard turn)
+        # Scheduled-turn state (armed after a vision hard turn)
+        # 同一時間只會 arm 一個 pending（第一段在第 1 次硬轉後 arm，第二段在第 2 次硬轉後 arm，
+        # 兩段之間中間還會夾一次 vision 硬轉，pending 已先 fire 完不會被覆蓋）
         self.scheduled_turn_pending = False
         self.scheduled_turn_trigger_time = 0.0
         self.scheduled_turn_dir = None
+        self.scheduled_turn_active_angular = 0.0
+        self.scheduled_turn_active_duration = 0.0
 
         # ---- Mission handoff (lane -> lidar_avoid) ----
         # 第 hard_turn_trigger_count 次 vision 觸發的硬轉完成後，停車 handoff_stop_duration 秒，
@@ -218,8 +228,19 @@ class LaneControllerFuzzy:
                     self.scheduled_turn_pending = True
                     self.scheduled_turn_dir = msg.turn_direction
                     self.scheduled_turn_trigger_time = self.hard_turn_end_time + self.scheduled_turn_delay
+                    self.scheduled_turn_active_angular = self.scheduled_turn_angular
+                    self.scheduled_turn_active_duration = self.scheduled_turn_duration
                     rospy.loginfo("Scheduled follow-up %s turn in %.2fs after first hard turn ends",
                                   self.scheduled_turn_dir, self.scheduled_turn_delay)
+                # 第二次大轉彎後，排程 scheduled_turn_delay_2 秒後再執行一次同方向硬轉
+                elif self.hard_turn_count == 2:
+                    self.scheduled_turn_pending = True
+                    self.scheduled_turn_dir = msg.turn_direction
+                    self.scheduled_turn_trigger_time = self.hard_turn_end_time + self.scheduled_turn_delay_2
+                    self.scheduled_turn_active_angular = self.scheduled_turn_angular_2
+                    self.scheduled_turn_active_duration = self.scheduled_turn_duration_2
+                    rospy.loginfo("Scheduled follow-up %s turn in %.2fs after second hard turn ends",
+                                  self.scheduled_turn_dir, self.scheduled_turn_delay_2)
                 return
                 
             # 根據 offset 決定是否需要左右轉校正
@@ -275,11 +296,13 @@ class LaneControllerFuzzy:
             self.cmd_pub.publish(twist)
             return
 
-        # 第一優先級 (排程)：第一次大轉彎後 X 秒，無視循線/路標，再執行一次同方向硬轉
+        # 第一優先級 (排程)：vision 硬轉後 X 秒，無視循線/路標，再執行一次同方向硬轉
+        # (第 1 次硬轉後用 scheduled_turn_*，第 2 次硬轉後用 scheduled_turn_*_2，
+        #  實際數值在 turn_callback arm 時就已固定在 active_* 裡)
         if self.scheduled_turn_pending and now >= self.scheduled_turn_trigger_time:
             self.active_hard_turn_dir = self.scheduled_turn_dir
-            self.active_hard_turn_angular = self.scheduled_turn_angular
-            self.hard_turn_end_time = now + self.scheduled_turn_duration
+            self.active_hard_turn_angular = self.scheduled_turn_active_angular
+            self.hard_turn_end_time = now + self.scheduled_turn_active_duration
             self.ignore_sign_end_time = self.hard_turn_end_time + self.hard_turn_cooldown
             self.scheduled_turn_pending = False
             # 清掉其他可能干擾的狀態，硬轉完直接回到循線
@@ -287,7 +310,7 @@ class LaneControllerFuzzy:
             self.aligning_sign = False
             self.is_scanning = False
             rospy.loginfo("Executing scheduled follow-up hard turn (%s) for %.2fs",
-                          self.active_hard_turn_dir, self.scheduled_turn_duration)
+                          self.active_hard_turn_dir, self.scheduled_turn_active_duration)
             twist.linear.x = self.base_speed
             twist.angular.z = self.active_hard_turn_angular if self.active_hard_turn_dir == 'left' else -self.active_hard_turn_angular
             self.cmd_pub.publish(twist)
