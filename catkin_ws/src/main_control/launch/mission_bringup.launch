@@ -1,0 +1,188 @@
+<!--
+  任務整合 launch：走線 -> 第 3 次硬轉完停車 -> 光達避障
+
+  流程：
+    1. 啟動時 lane_controller_fuzzy 發 /mission/phase = "lane" (latched)
+    2. lidar_odom_nav 看到非 "lidar_avoid" 的 phase，停在 S_IDLE 不發 cmd_vel
+    3. 走線 + 硬轉到 hard_turn_count == 3
+    4. 第 3 次硬轉完 -> 停車 handoff_stop_duration 秒 -> 發 /mission/phase = "lidar_avoid"
+    5. lane_controller_fuzzy 之後靜音；lidar_odom_nav 從 S_FWD_1 起跑接管底盤
+
+  啟動：
+    roslaunch main_control mission_bringup.launch
+-->
+<launch>
+
+  <!-- ============ 共用參數 ============ -->
+  <arg name="use_two_cameras" default="true"/>
+
+  <!-- Camera 1 (前視，循線) -->
+  <arg name="cam1_fps"    default="30"/>
+  <arg name="cam1_width"  default="640"/>
+  <arg name="cam1_height" default="480"/>
+
+  <!-- Camera 2 (轉彎標誌) -->
+  <arg name="cam2_fps"    default="30"/>
+  <arg name="cam2_width"  default="640"/>
+  <arg name="cam2_height" default="480"/>
+
+  <!-- 底盤 cmd_vel topic -->
+  <arg name="cmd_vel_topic" default="/arduino_vel"/>
+
+  <!-- 光達擷取扇形 -->
+  <arg name="front_angle_range"      default="15.0"/>
+  <arg name="front_angle_offset_deg" default="180.0"/>
+
+  <!-- 里程計參數 -->
+  <arg name="wheel_radius"  default="0.0331"/>
+  <arg name="wheel_base"    default="0.166"/>
+  <arg name="ticks_per_rev" default="390.3"/>
+
+  <!-- 避障速度 -->
+  <arg name="nav_v_linear"  default="0.30"/>
+  <arg name="nav_v_angular" default="1.0"/>
+
+  <!-- 任務交棒參數 -->
+  <arg name="hard_turn_trigger_count" default="99"/>
+  <arg name="handoff_stop_duration"   default="1.0"/>
+
+
+  <!-- ============ 共用底層：rosserial ============ -->
+  <node pkg="rosserial_python" type="serial_node.py" name="arduino_mega_serial_node" output="screen">
+    <param name="port" value="/dev/ttyUSB0"/>
+    <param name="baud" value="115200"/>
+  </node>
+
+
+  <!-- ============ 攝影機（走線階段使用，避障階段保留運轉） ============ -->
+  <node name="camera1" pkg="camera" type="camera.py" output="screen">
+    <param name="camera_id"   value="/dev/video0"/>
+    <param name="camera_name" value="camera"/>
+    <param name="frame_rate"  value="$(arg cam1_fps)"/>
+    <param name="width"       value="$(arg cam1_width)"/>
+    <param name="height"      value="$(arg cam1_height)"/>
+  </node>
+
+  <node name="camera2" pkg="camera" type="camera.py" output="screen" if="$(arg use_two_cameras)">
+    <param name="camera_id"   value="/dev/video2"/>
+    <param name="camera_name" value="camera2"/>
+    <param name="frame_rate"  value="$(arg cam2_fps)"/>
+    <param name="width"       value="$(arg cam2_width)"/>
+    <param name="height"      value="$(arg cam2_height)"/>
+  </node>
+
+
+  <!-- ============ 光達 driver + 前處理（暖機，切換零延遲） ============ -->
+  <include file="$(find rplidar_ros)/launch/rplidar_a1.launch"/>
+
+  <node pkg="nav_scripts" type="lidar_filter_node.py" name="lidar_filter_node" output="screen">
+    <param name="front_angle_range"      value="$(arg front_angle_range)"/>
+    <param name="front_angle_offset_deg" value="$(arg front_angle_offset_deg)"/>
+    <param name="max_valid_range"        value="12.0"/>
+    <remap from="/scan"         to="/scan"/>
+    <remap from="/lidar_output" to="/lidar_output"/>
+  </node>
+
+
+  <!-- ============ 里程計（兩階段都需要） ============ -->
+  <node pkg="nav_scripts" type="odometry_node.py" name="odometry_node" output="screen">
+    <param name="wheel_radius"  value="$(arg wheel_radius)"/>
+    <param name="wheel_base"    value="$(arg wheel_base)"/>
+    <param name="ticks_per_rev" value="$(arg ticks_per_rev)"/>
+    <param name="odom_frame"    value="odom"/>
+    <param name="base_frame"    value="base_link"/>
+    <param name="publish_tf"    value="true"/>
+    <remap from="/encoders" to="/encoders"/>
+    <remap from="/odometry" to="/odometry"/>
+  </node>
+
+
+  <!-- ============ 階段一：走線 ============ -->
+  <node pkg="lane_follower" type="lane_detect_v2.py" name="lane_detect_node" output="screen">
+    <param name="image_topic"  value="/camera/image_raw"/>
+    <param name="pub_topic"    value="lane_detect"/>
+    <param name="debug_topic"  value="lane_detect/image_out"/>
+    <param name="show_window"  value="false"/>
+
+    <param name="strict_roi"            value="true"/>
+    <param name="min_contour_area"      value="500.0"/>
+    <param name="anchor_ratio"          value="0.83"/>
+    <param name="lane_width_history_len" value="30"/>
+    <param name="enable_yaw_b"          value="true"/>
+    <param name="max_predict_frames"    value="15"/>
+
+    <param name="use_otsu_fallback"   value="true"/>
+    <param name="adaptive_block_size" value="25"/>
+    <param name="adaptive_c"          value="10"/>
+    <param name="blur_kernel"         value="5"/>
+    <param name="morph_open_kernel"   value="3"/>
+    <param name="morph_close_kernel"  value="9"/>
+  </node>
+
+  <node pkg="lane_follower" type="turn_detect.py" name="turn_detect_node" output="screen">
+    <param name="image_topic" value="/camera2/image_raw"/>
+    <param name="debug_topic" value="turn_detect/image_out"/>
+    <param name="show_window" value="false"/>
+    <!-- 二值化 threshold：'fixed' (推薦) / 'otsu' / 'adaptive'
+         threshold_value 越小越只抓「真的黑」；灰被當黑 → 調小 -->
+    <param name="threshold_method" value="fixed"/>
+    <param name="threshold_value" value="60"/>
+    <param name="invert_binary" value="true"/>
+  </node>
+
+  <node pkg="lane_follower" type="lane_controller_fuzzy.py" name="lane_controller_fuzzy" output="screen">
+    <param name="base_speed"  value="0.3"/>
+    <param name="max_angular" value="1.1"/>
+
+    <param name="turn_pixel_threshold_1" value="25000.0"/>
+    <param name="hard_turn_angular_1"    value="1.8"/>
+    <param name="hard_turn_duration_1"   value="0.88"/>
+
+    <param name="turn_pixel_threshold_2" value="25000.0"/>
+    <param name="hard_turn_angular_2"    value="1.8"/>
+    <param name="hard_turn_duration_2"   value="1.0"/>
+
+    <param name="hard_turn_cooldown"           value="1"/>
+    <param name="sign_detect_pixel_threshold"  value="8000.0"/>
+    <param name="sign_offset_threshold"        value="50.0"/>
+    <param name="sign_align_angular"           value="0.2"/>
+
+    <param name="scheduled_turn_delay"    value="4.6"/>
+    <param name="scheduled_turn_angular"  value="1.8"/>
+    <param name="scheduled_turn_duration" value="0.88"/>
+
+    <!-- 第二段 scheduled turn：在第 2 次 vision 硬轉完成後 delay 秒，再做一次同方向硬轉 -->
+    <param name="scheduled_turn_delay_2"    value="3.5"/>
+    <param name="scheduled_turn_angular_2"  value="0.7"/>
+    <param name="scheduled_turn_duration_2" value="0.5"/>
+
+    <!-- 任務交棒：第 N 次 vision 硬轉完成後 -->
+    <param name="hard_turn_trigger_count" value="$(arg hard_turn_trigger_count)"/>
+    <param name="handoff_stop_duration"   value="$(arg handoff_stop_duration)"/>
+
+    <remap from="arduino_vel" to="$(arg cmd_vel_topic)"/>
+  </node>
+
+
+  <!-- ============ 階段二：光達避障（啟動時停在 S_IDLE） ============ -->
+  <node pkg="nav_scripts" type="lidar_odom_nav_node.py" name="lidar_odom_nav_node" output="screen">
+    <param name="wait_for_phase" value="true"/>
+    <param name="trigger_phase"  value="lidar_avoid"/>
+
+    <param name="v_linear"  value="$(arg nav_v_linear)"/>
+    <param name="v_angular" value="$(arg nav_v_angular)"/>
+    <param name="dist_th_1" value="0.30"/>
+    <param name="dist_th_2" value="0.30"/>
+    <param name="dist_th_3" value="0.40"/>
+    <param name="dist_th_4" value="0.50"/>
+    <param name="turn_overshoot_deg" value="10.0"/>
+    <param name="turn_tol_deg"       value="2.0"/>
+    <param name="brake_duration"     value="0.3"/>
+    <param name="rate_hz"            value="20.0"/>
+
+    <remap from="/cmd_vel"      to="$(arg cmd_vel_topic)"/>
+    <remap from="/lidar_output" to="/lidar_output"/>
+    <remap from="/odometry"     to="/odometry"/>
+  </node>
+
+</launch>

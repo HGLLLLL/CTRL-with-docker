@@ -69,6 +69,11 @@
         <param name="image_topic" value="/camera2/image_raw" />
         <param name="debug_topic" value="turn_detect/image_out" />
         <param name="show_window" value="false" />
+        <!-- 二值化 threshold：'fixed' (推薦) / 'otsu' / 'adaptive'
+             threshold_value 越小越只抓「真的黑」；灰被當黑 → 調小 -->
+        <param name="threshold_method" value="fixed" />
+        <param name="threshold_value" value="60" />
+        <param name="invert_binary" value="true" />
     </node>
 
 

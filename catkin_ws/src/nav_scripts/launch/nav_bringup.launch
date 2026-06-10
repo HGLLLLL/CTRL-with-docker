@@ -1,0 +1,134 @@
+<!--
+  整合啟動：lidar_filter / odometry / 兩種導航腳本
+
+  常用啟動方式：
+    1) 同時跑 lidar+odom 複合避障 (任務三)：
+         roslaunch nav_scripts nav_bringup.launch nav_mode:=lidar_odom
+
+    2) 跑純里程計盲走 (任務四)：
+         roslaunch nav_scripts nav_bringup.launch nav_mode:=pure_odom
+
+    3) 只跑感測前處理 (不發 cmd_vel)：
+         roslaunch nav_scripts nav_bringup.launch nav_mode:=none
+
+  注意：lidar_filter 與 odometry 在三種模式下都會啟動，
+        因為下游節點都需要它們的輸出。
+-->
+<launch>
+
+  <!-- ============ 全域可調參數 ============ -->
+  <!-- nav_mode: lidar_odom | pure_odom | none -->
+  <arg name="nav_mode" default="lidar_odom"/>
+
+  <!-- LaserScan topic（如果硬體不是 /scan 可在這裡 remap 來源） -->
+  <arg name="scan_topic" default="/scan"/>
+
+  <!-- 編碼器 ticks topic -->
+  <arg name="encoders_topic" default="/encoders"/>
+
+  <!-- cmd_vel topic（轉送給底盤的速度） -->
+  <arg name="cmd_vel_topic" default="/arduino_vel"/>
+
+  <!-- 光達正前方擷取範圍 (±度) -->
+  <arg name="front_angle_range" default="15.0"/>
+
+  <!-- 光達安裝偏移：車頭在光達座標系裡的角度 (度)。
+       本車光達反裝，車頭 = 光達 -X 方向 = 180°。 -->
+  <arg name="front_angle_offset_deg" default="180.0"/>
+
+  <!-- ============ 里程計參數 ============ -->
+  <!-- 輪子半徑 (m) -->
+  <arg name="wheel_radius"   default="0.0331"/>
+  <!-- 左右輪距 (m) -->
+  <arg name="wheel_base"     default="0.166"/>
+  <!-- 一圈 ticks 數 -->
+  <arg name="ticks_per_rev"  default="390.3"/>
+
+  <!-- ============ 導航速度（兩個導航腳本共用預設） ============ -->
+  <arg name="v_linear"  default="0.30"/>
+  <arg name="v_angular" default="1.0"/>
+
+  <node pkg="rosserial_python" type="serial_node.py" name="arduino_mega_serial_node" output="screen">
+      <param name="port" value="/dev/ttyUSB0"/>
+      <param name="baud" value="115200"/>
+  </node>
+
+
+  <!-- =================================================== -->
+  <!-- RPLidar driver：沒有它就不會有 /scan，lidar_filter 會一直輸出 inf，
+       導航節點會誤判「前方無障礙」而全速直行撞牆。 -->
+  <!-- =================================================== -->
+  <include file="$(find rplidar_ros)/launch/rplidar_a1.launch"/>
+
+
+  <!-- =================================================== -->
+  <!-- 任務一：光達前處理 -->
+  <!-- =================================================== -->
+  <node pkg="nav_scripts" type="lidar_filter_node.py" name="lidar_filter_node" output="screen">
+    <param name="front_angle_range"      value="$(arg front_angle_range)"/>
+    <param name="front_angle_offset_deg" value="$(arg front_angle_offset_deg)"/>
+    <param name="max_valid_range"        value="12.0"/>
+    <remap from="/scan"          to="$(arg scan_topic)"/>
+    <remap from="/lidar_output"  to="/lidar_output"/>
+  </node>
+
+
+  <!-- =================================================== -->
+  <!-- 任務二：編碼器里程計 -->
+  <!-- =================================================== -->
+  <node pkg="nav_scripts" type="odometry_node.py" name="odometry_node" output="screen">
+    <param name="wheel_radius"   value="$(arg wheel_radius)"/>
+    <param name="wheel_base"     value="$(arg wheel_base)"/>
+    <param name="ticks_per_rev"  value="$(arg ticks_per_rev)"/>
+    <param name="odom_frame"     value="odom"/>
+    <param name="base_frame"     value="base_link"/>
+    <param name="publish_tf"     value="true"/>
+    <remap from="/encoders"  to="$(arg encoders_topic)"/>
+    <remap from="/odometry"  to="/odometry"/>
+  </node>
+
+
+  <!-- =================================================== -->
+  <!-- 任務三：lidar + odom 複合避障狀態機 -->
+  <!-- =================================================== -->
+  <group if="$(eval arg('nav_mode') == 'lidar_odom')">
+    <node pkg="nav_scripts" type="lidar_odom_nav_node.py"
+          name="lidar_odom_nav_node" output="screen">
+      <!-- 單獨跑本 launch 時不等 /mission/phase，直接從 S_FWD_1 起跑。
+           任務整合用 main_control/mission_bringup.launch 才會開 wait_for_phase。 -->
+      <param name="wait_for_phase" value="false"/>
+      <param name="v_linear"     value="$(arg v_linear)"/>
+      <param name="v_angular"    value="$(arg v_angular)"/>
+      <param name="dist_th_1"    value="0.30"/>
+      <param name="dist_th_2"    value="0.30"/>
+      <param name="dist_th_3"    value="0.45"/>
+      <param name="dist_th_4"    value="0.65"/>
+      <!-- 轉彎慣性補償：實測再調。先給 10 度 + 0.3 秒剎車過渡 -->
+      <param name="turn_overshoot_deg" value="10.0"/>
+      <param name="turn_tol_deg"       value="2.0"/>
+      <param name="brake_duration"     value="0.3"/>
+      <param name="rate_hz"      value="20.0"/>
+      <remap from="/cmd_vel"      to="$(arg cmd_vel_topic)"/>
+      <remap from="/lidar_output" to="/lidar_output"/>
+      <remap from="/odometry"     to="/odometry"/>
+    </node>
+  </group>
+
+
+  <!-- =================================================== -->
+  <!-- 任務四：純里程計盲走 -->
+  <!-- =================================================== -->
+  <group if="$(eval arg('nav_mode') == 'pure_odom')">
+    <node pkg="nav_scripts" type="pure_odom_nav_node.py"
+          name="pure_odom_nav_node" output="screen">
+      <param name="v_linear"     value="$(arg v_linear)"/>
+      <param name="v_angular"    value="$(arg v_angular)"/>
+      <param name="dist_tol"     value="0.02"/>
+      <param name="turn_tol_deg" value="2.0"/>
+      <param name="rate_hz"      value="20.0"/>
+      <remap from="/cmd_vel"  to="$(arg cmd_vel_topic)"/>
+      <remap from="/odometry" to="/odometry"/>
+    </node>
+  </group>
+
+</launch>

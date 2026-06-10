@@ -28,8 +28,15 @@ except ImportError:
 # Configuration / Settings (從原 config.py 整合)
 # ==========================================
 BLUR_KERNEL_SIZE = (5, 5)
-THRESHOLD_METHOD = 'otsu' 
-INVERT_BINARY = True 
+# 'fixed'    : 用 THRESHOLD_VALUE 當固定門檻，最好調，灰色不會被當黑色 (推薦)
+# 'otsu'     : 自動找門檻，但當畫面同時有灰跟黑時，灰會被併進黑色那一群
+# 'adaptive' : 區域自適應，光照不均時用
+THRESHOLD_METHOD = 'fixed'
+# 固定門檻值 (0~255)：值越「小」代表越嚴格，只有「更黑」的才會被當成黑色。
+# 灰色被誤判成黑色 → 把這個值「調小」(例如 80 → 60 → 50)。
+# 黑色三角形抓不到 / 太斷裂 → 把這個值「調大」(例如 60 → 80 → 100)。
+THRESHOLD_VALUE = 60
+INVERT_BINARY = True
 
 MIN_AREA = 1000.0  
 ASPECT_RATIO_MIN = 0.5
@@ -100,20 +107,25 @@ class Tracker:
         
         return self.state
 
-def preprocess(frame: np.ndarray) -> np.ndarray:
+def preprocess(frame: np.ndarray,
+               method: str = THRESHOLD_METHOD,
+               thresh_value: int = THRESHOLD_VALUE,
+               invert: bool = INVERT_BINARY) -> np.ndarray:
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, BLUR_KERNEL_SIZE, 0)
-    
-    if THRESHOLD_METHOD == 'otsu':
+
+    if method == 'otsu':
         _, binary = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    else:
+    elif method == 'adaptive':
         binary = cv2.adaptiveThreshold(
             blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
         )
-        
-    if INVERT_BINARY:
+    else:  # 'fixed'
+        _, binary = cv2.threshold(blur, thresh_value, 255, cv2.THRESH_BINARY)
+
+    if invert:
         binary = cv2.bitwise_not(binary)
-        
+
     return binary
 
 def find_triangle(binary: np.ndarray) -> Optional[Triangle]:
@@ -214,11 +226,22 @@ class TurnDetectNode:
         # 讀取 ROS 參數配置
         self.image_topic = rospy.get_param('~image_topic', '/usb_cam/image_raw')
         self.debug_topic = rospy.get_param('~debug_topic', 'turn_detect/image_out')
+        self.binary_topic = rospy.get_param('~binary_topic', 'turn_detect/binary')
         self.show_window = rospy.get_param('~show_window', SHOW_WINDOW)
-        
+
+        # 二值化參數 (可在 launch 即時調整，不用重 build)
+        self.threshold_method = rospy.get_param('~threshold_method', THRESHOLD_METHOD)
+        self.threshold_value = int(rospy.get_param('~threshold_value', THRESHOLD_VALUE))
+        self.invert_binary = bool(rospy.get_param('~invert_binary', INVERT_BINARY))
+        rospy.loginfo(
+            f"Threshold: method={self.threshold_method}, "
+            f"value={self.threshold_value}, invert={self.invert_binary}"
+        )
+
         # 建立 Publisher 與 Subscriber
         self.pub = rospy.Publisher('turn_detect', TurnDetect, queue_size=10)
         self.debug_pub = rospy.Publisher(self.debug_topic, Image, queue_size=1)
+        self.binary_pub = rospy.Publisher(self.binary_topic, Image, queue_size=1)
         self.sub = rospy.Subscriber(self.image_topic, Image, self.image_callback, queue_size=1, buff_size=2**24)
         
         self.tracker = Tracker()
@@ -241,7 +264,20 @@ class TurnDetectNode:
         fps = self.tick_freq / (curr_tick - self.prev_tick) if (curr_tick - self.prev_tick) > 0 else 0.0
         self.prev_tick = curr_tick
             
-        binary = preprocess(frame)
+        binary = preprocess(frame,
+                            method=self.threshold_method,
+                            thresh_value=self.threshold_value,
+                            invert=self.invert_binary)
+
+        # 發布二值化結果（mono8），有訂閱者才送以省 CPU
+        if self.binary_pub.get_num_connections() > 0:
+            try:
+                bin_msg = self.bridge.cv2_to_imgmsg(binary, "mono8")
+                bin_msg.header = msg.header
+                self.binary_pub.publish(bin_msg)
+            except CvBridgeError as e:
+                rospy.logerr(f"CV Bridge Error on binary publish: {e}")
+
         triangle = find_triangle(binary)
         state = self.tracker.update(triangle)
         
